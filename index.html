@@ -82,25 +82,6 @@
   #hud .lbl{color:var(--gray-500);}
   #hudLayer{color:var(--accent);font-weight:bold;}
   #hudTimeOfDay{color:var(--accent);}
-  #hudEnergy{
-    color: #44ff88;
-    font-weight: bold;
-  }
-  #energyBar{
-    display:inline-block;
-    width:100px;
-    height:12px;
-    background:var(--gray-800);
-    border:1px solid var(--gray-700);
-    vertical-align:middle;
-    margin-left:8px;
-  }
-  #energyFill{
-    height:100%;
-    width:100%;
-    background:linear-gradient(90deg, #ff4444, #44ff88);
-    transition:width 0.3s;
-  }
   #crosshair{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
     width:6px;height:6px;border-radius:50%;background:rgba(230,230,230,0.75);
@@ -151,11 +132,93 @@
   }
   #btnFlashlight.active{background:#ffdd44;border-color:#ffdd44;color:#0c0d0f;}
   #camLookZone{position:absolute;inset:0;touch-action:none;}
+
+  /* ===== GAME OVER SCREEN (CUBO ROXO) ===== */
+  #gameOverScreen{
+    position:absolute;inset:0;z-index:100;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,0.95);
+    gap:30px;
+  }
+  #gameOverTitle{
+    font-family:var(--font-ui);
+    font-weight:900;
+    font-size:clamp(40px,6vw,70px);
+    color:#8800ff;
+    text-transform:uppercase;
+    text-shadow:0 0 60px rgba(136,0,255,0.6), 0 0 120px rgba(136,0,255,0.3);
+    letter-spacing:15px;
+    animation: gameOverPulse 0.8s ease-in-out infinite alternate;
+  }
+  #gameOverSub{
+    font-family:var(--font-ui);
+    color:var(--gray-300);
+    font-size:clamp(14px,1.5vw,22px);
+    letter-spacing:6px;
+    text-transform:uppercase;
+    opacity:0.6;
+  }
+  #gameOverTimer{
+    font-family:var(--font-ui);
+    color:var(--accent);
+    font-size:clamp(20px,2.5vw,32px);
+    letter-spacing:5px;
+    margin-top:10px;
+    animation: timerPulse 0.5s ease-in-out infinite alternate;
+  }
+  @keyframes gameOverPulse{
+    0%{text-shadow:0 0 40px rgba(136,0,255,0.4), 0 0 80px rgba(136,0,255,0.2);transform:scale(0.98);}
+    100%{text-shadow:0 0 80px rgba(136,0,255,0.8), 0 0 160px rgba(136,0,255,0.4);transform:scale(1.02);}
+  }
+  @keyframes timerPulse{
+    0%{opacity:0.5;}
+    100%{opacity:1;}
+  }
+  #gameOverStats{
+    color:var(--gray-500);
+    font-size:clamp(11px,1vw,16px);
+    letter-spacing:2px;
+    text-align:center;
+    line-height:2;
+  }
+  #gameOverStats span{color:var(--gray-100);}
+  .gameOverGlitch{
+    position:absolute;
+    inset:0;
+    background:repeating-linear-gradient(0deg, 
+      rgba(136,0,255,0.03) 0px,
+      rgba(136,0,255,0.03) 2px,
+      transparent 2px,
+      transparent 8px
+    );
+    pointer-events:none;
+    animation: glitchMove 0.1s linear infinite;
+  }
+  @keyframes glitchMove{
+    0%{transform:translateY(0px);}
+    100%{transform:translateY(4px);}
+  }
 </style>
 </head>
 <body>
 
 <canvas id="renderCanvas"></canvas>
+
+<!-- GAME OVER SCREEN (CUBO ROXO) -->
+<div id="gameOverScreen">
+  <div class="gameOverGlitch"></div>
+  <div id="gameOverTitle">⬛ VOCÊ FOI TRAPADO</div>
+  <div id="gameOverSub">A ANOMALIA TE PEGOU</div>
+  <div id="gameOverStats">
+    TEMPO SOBREVIVIDO: <span id="goTime">00:00</span><br>
+    POSIÇÃO: <span id="goPos">0, 0, 0</span><br>
+    CAMADA: <span id="goLayer">0</span>
+  </div>
+  <div id="gameOverTimer">RETORNANDO EM 5s</div>
+</div>
 
 <div id="startScreen">
   <div>
@@ -178,11 +241,6 @@
   <div><span class="lbl">Posição:</span> <span id="hudPos">0.0, 0.0, 0.0</span></div>
   <div><span class="lbl">Camada:</span> <span id="hudLayer">0</span></div>
   <div><span class="lbl">Período:</span> <span id="hudTimeOfDay">☀️ DIA</span></div>
-  <div>
-    <span class="lbl">Energia:</span>
-    <span id="hudEnergy">100%</span>
-    <span id="energyBar"><span id="energyFill" style="width:100%"></span></span>
-  </div>
 </div>
 <div id="crosshair"></div>
 <div id="pcHint">WASD mover · ESPAÇO pular · Q correr · E voar · F lanterna · MOUSE olhar</div>
@@ -202,7 +260,7 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - ANOMALIA GIGANTE COM ANIMAÇÃO FODA
+   INDUSTRY FUND - ANOMALIA GIGANTE (SEM ENERGIA)
    ====================================================================== */
 
 /* ---------------- CONFIG ---------------- */
@@ -228,16 +286,12 @@ const LAYER_HEIGHT  = 400;
 const HOLE_RADIUS   = 60;
 const HOLE_SPACING  = 400;
 
-// ===== ENERGIA =====
-const MAX_ENERGY = 100;
-const RUN_ENERGY_DRAIN = 3.33;
-const FLY_ENERGY_DRAIN = 10;
-const ENERGY_RECHARGE_RATE = 5;
-
-// ===== ANOMALIA =====
-const ANOMALIA_HEIGHT = 100;
-const ANOMALIA_SPAWN_DIST = 900;  // 900 METROS!
-const ANOMALIA_REACH = 50;
+// ===== ANOMALIA (NOVAS CONFIGURAÇÕES) =====
+const ANOMALIA_HEIGHT = 100;          // 100 METROS
+const ANOMALIA_SPAWN_DIST = 900;      // 900m de distância
+const ANOMALIA_DEATH_RADIUS = 90;     // 90 METROS (zona de morte)
+const ANOMALIA_DESTROY_RADIUS = 150;  // 150 METROS (destruição)
+const ANOMALIA_SPEED_MULT = 1.5;      // Velocidade = velocidade do jogador * 1.5
 
 const EYE_HEIGHT   = 1.7;
 const PLAYER_RADIUS = 0.4;
@@ -301,7 +355,76 @@ scene.add(flashlight.target);
 
 let flashlightOn = false;
 
-/* ---------------- ANOMALIA COM ANIMAÇÃO FODA ---------------- */
+/* ---------------- GAME OVER ---------------- */
+let gameOverActive = false;
+let gameOverTimer = 0;
+const GAME_OVER_RESPAWN_TIME = 5;
+
+function showGameOver(playerPos, elapsed){
+  gameOverActive = true;
+  gameOverTimer = 0;
+  
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('crosshair').style.display = 'none';
+  document.getElementById('pcHint').style.display = 'none';
+  document.getElementById('mobileControls').style.display = 'none';
+  
+  const screen = document.getElementById('gameOverScreen');
+  screen.style.display = 'flex';
+  
+  const s = Math.floor(elapsed/1000);
+  const mm = String(Math.floor(s/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  document.getElementById('goTime').textContent = mm+':'+ss;
+  document.getElementById('goPos').textContent = 
+    playerPos.x.toFixed(1)+', '+(playerPos.y-EYE_HEIGHT).toFixed(1)+', '+playerPos.z.toFixed(1);
+  document.getElementById('goLayer').textContent = getLayerFromY(playerPos.y);
+  
+  started = false;
+}
+
+function updateGameOver(dt){
+  if(!gameOverActive) return;
+  
+  gameOverTimer += dt;
+  const remaining = Math.ceil(GAME_OVER_RESPAWN_TIME - gameOverTimer);
+  document.getElementById('gameOverTimer').textContent = `RETORNANDO EM ${remaining}s`;
+  
+  if(gameOverTimer >= GAME_OVER_RESPAWN_TIME){
+    gameOverActive = false;
+    document.getElementById('gameOverScreen').style.display = 'none';
+    document.getElementById('startScreen').style.display = 'flex';
+    
+    loadingComplete = false;
+    chunkMap.clear();
+    saltMap.clear();
+    while(chunkGroup.children.length > 0){
+      const child = chunkGroup.children[0];
+      chunkGroup.remove(child);
+      if(child.geometry) child.geometry.dispose();
+      if(child.material) child.material.dispose();
+    }
+    anomaliaAlive = false;
+    while(anomaliaGroup.children.length > 0){
+      const child = anomaliaGroup.children[0];
+      anomaliaGroup.remove(child);
+      if(child.geometry) child.geometry.dispose();
+      if(child.material) child.material.dispose();
+    }
+    if(anomaliaGlowLight){
+      scene.remove(anomaliaGlowLight);
+      anomaliaGlowLight = null;
+    }
+    player.position.set(0, EYE_HEIGHT, 0);
+    running = false;
+    flying = false;
+    updateFlyUI();
+    started = false;
+    loadingComplete = false;
+  }
+}
+
+/* ---------------- ANOMALIA ---------------- */
 let anomaliaGroup = new THREE.Group();
 scene.add(anomaliaGroup);
 let anomaliaAlive = false;
@@ -318,7 +441,6 @@ let anomaliaParts = {
 let animTime = 0;
 
 function createAnomalia(){
-  // Limpa anomalia anterior
   while(anomaliaGroup.children.length > 0){
     const child = anomaliaGroup.children[0];
     anomaliaGroup.remove(child);
@@ -334,7 +456,6 @@ function createAnomalia(){
   anomaliaParts.eyes = [];
   anomaliaParts.legs = [];
   
-  // ===== CORPO PRINCIPAL (pulsante) =====
   const bodyGeo = new THREE.SphereGeometry(20, 32, 32);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0x000000,
@@ -349,7 +470,6 @@ function createAnomalia(){
   anomaliaGroup.add(body);
   anomaliaParts.body = body;
   
-  // ===== OLHOS ROXOS (7 olhos com animação) =====
   const eyeMat = new THREE.MeshStandardMaterial({
     color: 0x8800ff,
     emissive: 0x6600cc,
@@ -370,7 +490,6 @@ function createAnomalia(){
     anomaliaParts.eyes.push(eye);
   }
   
-  // ===== PATAS (10 patas com animação) =====
   const legMat = new THREE.MeshStandardMaterial({
     color: 0x111111,
     roughness: 0.4,
@@ -381,21 +500,18 @@ function createAnomalia(){
     const angle = (i / 10) * Math.PI * 2;
     const legGroup = new THREE.Group();
     
-    // Segmento 1
     const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 30, 8), legMat);
     seg1.position.y = 15;
     seg1.rotation.x = 0.4;
     seg1.userData = { phase: i * 0.5 };
     legGroup.add(seg1);
     
-    // Segmento 2
     const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 25, 8), legMat);
     seg2.position.set(0, -8, 12);
     seg2.rotation.x = -0.6;
     seg2.userData = { phase: i * 0.5 + 1 };
     legGroup.add(seg2);
     
-    // Segmento 3
     const seg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.5, 20, 8), legMat);
     seg3.position.set(0, -18, 22);
     seg3.rotation.x = -0.3;
@@ -414,7 +530,6 @@ function createAnomalia(){
     anomaliaParts.legs.push(legGroup);
   }
   
-  // ===== ABDOMEN (com pulsação) =====
   const abdomenGeo = new THREE.SphereGeometry(15, 24, 24);
   const abdomenMat = new THREE.MeshStandardMaterial({
     color: 0x0a0a0a,
@@ -429,12 +544,10 @@ function createAnomalia(){
   anomaliaGroup.add(abdomen);
   anomaliaParts.abdomen = abdomen;
   
-  // ===== LUZ VERMELHA =====
   anomaliaGlowLight = new THREE.PointLight(0xff0000, 0, 250);
   anomaliaGlowLight.position.set(0, 50, 0);
   anomaliaGroup.add(anomaliaGlowLight);
   
-  // ===== AURA PULSANTE =====
   const auraMat = new THREE.MeshBasicMaterial({
     color: 0xff0000,
     transparent: true,
@@ -461,13 +574,11 @@ function createAnomalia(){
   anomaliaAlive = true;
 }
 
-// ===== ANIMAÇÃO FODA DA ARANHA =====
 function animateAnomalia(dt, isDay){
   animTime += dt;
   
   if(!anomaliaParts.body) return;
   
-  // CORPO PULSA (respiração)
   const breathe = Math.sin(animTime * 0.8) * 0.03;
   anomaliaParts.body.scale.set(
     1 + breathe * 0.5,
@@ -475,7 +586,6 @@ function animateAnomalia(dt, isDay){
     1 + breathe * 0.5
   );
   
-  // ABDOMEN PULSA
   if(anomaliaParts.abdomen){
     const abdPulse = Math.sin(animTime * 1.2 + 0.5) * 0.04;
     anomaliaParts.abdomen.scale.set(
@@ -485,13 +595,11 @@ function animateAnomalia(dt, isDay){
     );
   }
   
-  // PATAS SE MOVEM (caminhando)
   anomaliaParts.legs.forEach((leg, index) => {
     const walkCycle = Math.sin(animTime * 2 + index * 0.8) * 0.3;
     leg.rotation.z = 0.3 + walkCycle * 0.15;
     leg.position.y = 35 + Math.sin(animTime * 2 + index * 0.8) * 2;
     
-    // Movimento das patas
     leg.children.forEach((seg, segIndex) => {
       const phase = seg.userData.phase || 0;
       const wave = Math.sin(animTime * 2.5 + phase + index * 0.3) * 0.2;
@@ -499,16 +607,14 @@ function animateAnomalia(dt, isDay){
     });
   });
   
-  // OLHOS PISCAM E BRILHAM
   anomaliaParts.eyes.forEach((eye, index) => {
     const blink = Math.sin(animTime * 3 + index * 1.2);
     const intensity = 2 + Math.sin(animTime * 1.5 + index * 0.7) * 0.5;
     if(blink > 0.8){
-      eye.material.emissiveIntensity = 0.1; // Piscou
+      eye.material.emissiveIntensity = 0.1;
     } else {
       eye.material.emissiveIntensity = intensity;
     }
-    // Olhos se movem lentamente
     const radius = 18;
     const baseAngle = (index / 7) * Math.PI * 2;
     const sway = Math.sin(animTime * 0.3 + index) * 0.5;
@@ -516,7 +622,6 @@ function animateAnomalia(dt, isDay){
     eye.position.z = Math.sin(baseAngle + sway * 0.1) * radius * 0.6;
   });
   
-  // AURA PULSA
   if(anomaliaParts.aura){
     const pulse = Math.sin(animTime * 0.5) * 0.3 + 0.7;
     anomaliaParts.aura.scale.set(pulse, pulse, pulse);
@@ -526,7 +631,6 @@ function animateAnomalia(dt, isDay){
     anomaliaParts.aura2.material.opacity = 0.03 + Math.sin(animTime * 0.5 + 1) * 0.02;
   }
   
-  // LUZ VERMELHA NA NOITE
   if(anomaliaGlowLight){
     if(!isDay){
       anomaliaGlowLight.intensity = 15 + Math.sin(animTime * 2) * 5;
@@ -560,26 +664,23 @@ function spawnAnomalia(playerPos){
 }
 
 function updateAnomalia(dt, playerPos, isDay, playerSpeed){
-  if(!anomaliaAlive) return;
+  if(!anomaliaAlive || gameOverActive) return;
   
-  // ANIMAÇÃO FODA
   animateAnomalia(dt, isDay);
   
-  // SEMPRE persegue o jogador
   const dx = playerPos.x - anomaliaPos.x;
   const dz = playerPos.z - anomaliaPos.z;
   const dy = playerPos.y - anomaliaPos.y;
   const dist = Math.hypot(dx, dy, dz);
   
-  // Se distância > 1000m, spawna nova anomalia mais perto
   if(dist > ANOMALIA_SPAWN_DIST + 100){
     spawnAnomalia(playerPos);
     return;
   }
   
-  // ===== VELOCIDADE = VELOCIDADE DO JOGADOR =====
-  const speed = playerSpeed;
-  const moveSpeed = Math.min(speed * dt * 1.5, dist * 0.3);
+  // Velocidade = velocidade do jogador * 1.5
+  const speed = playerSpeed * ANOMALIA_SPEED_MULT;
+  const moveSpeed = Math.min(speed * dt, dist * 0.3);
   
   if(dist > 1){
     const normX = dx / dist;
@@ -595,7 +696,6 @@ function updateAnomalia(dt, playerPos, isDay, playerSpeed){
     
     anomaliaGroup.position.copy(anomaliaPos);
     
-    // Rotaciona suavemente
     const lookAngle = Math.atan2(dx, dz);
     let currentAngle = anomaliaGroup.rotation.y;
     let diff = lookAngle - currentAngle;
@@ -604,15 +704,14 @@ function updateAnomalia(dt, playerPos, isDay, playerSpeed){
     anomaliaGroup.rotation.y += diff * 0.05;
   }
   
-  // ===== DESTROI ESTRUTURAS (exceto chão) =====
-  const destroyRadius = 60;
+  // ===== ZONA DE DESTRUIÇÃO: 150 METROS =====
+  const destroyRadius = ANOMALIA_DESTROY_RADIUS;
   for(const [key, c] of chunkMap){
     const cx = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
     const cz = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
     const cy = c.layer * LAYER_HEIGHT;
     const d = Math.hypot(cx - anomaliaPos.x, cz - anomaliaPos.z, cy - anomaliaPos.y);
     
-    // Só destrói se não for o chão (layerY)
     const isGround = Math.abs(cy - (c.layer * LAYER_HEIGHT)) < 2;
     if(d < destroyRadius && c.state === 'active' && !isGround){
       chunkGroup.remove(c.mesh);
@@ -623,88 +722,11 @@ function updateAnomalia(dt, playerPos, isDay, playerSpeed){
     }
   }
   
-  // ===== TOQUE = MORTE =====
-  if(dist < ANOMALIA_REACH){
-    alert('💀 A ANOMALIA TE PEGOU! VOCÊ MORREU! 💀');
-    playerPos.set(0, EYE_HEIGHT, 0);
-    spawnAnomalia(playerPos);
-    energy = MAX_ENERGY;
-    running = false;
-    if(flying) setFlying(false);
-    updateEnergyUI();
-    updateFlyUI();
+  // ===== ZONA DE MORTE: 90 METROS =====
+  if(dist < ANOMALIA_DEATH_RADIUS && !gameOverActive){
+    showGameOver(playerPos, performance.now() - gameStartTime);
   }
 }
-
-/* ---------------- SISTEMA DE ENERGIA ---------------- */
-let energy = MAX_ENERGY;
-let isRunning = false;
-let isFlying = false;
-
-function updateEnergy(dt, runningNow, flyingNow){
-  isRunning = runningNow;
-  isFlying = flyingNow;
-  
-  if(energy <= 0){
-    energy = 0;
-    if(isRunning || isFlying){
-      running = false;
-      if(flying) setFlying(false);
-      isRunning = false;
-      isFlying = false;
-      updateFlyUI();
-    }
-    energy += ENERGY_RECHARGE_RATE * 0.3 * dt;
-    if(energy > MAX_ENERGY) energy = MAX_ENERGY;
-    updateEnergyUI();
-    return;
-  }
-  
-  let drain = 0;
-  if(isRunning){
-    drain += RUN_ENERGY_DRAIN * dt;
-  }
-  if(isFlying){
-    drain += FLY_ENERGY_DRAIN * dt;
-  }
-  
-  energy -= drain;
-  
-  if(!isRunning && !isFlying && energy < MAX_ENERGY){
-    energy += ENERGY_RECHARGE_RATE * dt;
-    if(energy > MAX_ENERGY) energy = MAX_ENERGY;
-  }
-  
-  if(energy <= 0){
-    energy = 0;
-    running = false;
-    if(flying) setFlying(false);
-    isRunning = false;
-    isFlying = false;
-    updateFlyUI();
-  }
-  
-  updateEnergyUI();
-}
-
-function updateEnergyUI(){
-  const pct = Math.max(0, Math.min(100, energy));
-  document.getElementById('hudEnergy').textContent = Math.round(pct) + '%';
-  document.getElementById('energyFill').style.width = pct + '%';
-  
-  const fill = document.getElementById('energyFill');
-  if(pct > 60) fill.style.background = 'linear-gradient(90deg, #44ff88, #44ff88)';
-  else if(pct > 30) fill.style.background = 'linear-gradient(90deg, #ffaa44, #ffaa44)';
-  else fill.style.background = 'linear-gradient(90deg, #ff4444, #ff4444)';
-}
-
-function onResize(){
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-window.addEventListener('resize', onResize);
-onResize();
 
 /* ---------------- GEOMETRY TEMPLATE ---------------- */
 const UNIT_BOX = new THREE.BoxGeometry(1,1,1).toNonIndexed();
@@ -1294,8 +1316,7 @@ function updateFlight(dt, inForward, inStrafe, ascend, descend){
 }
 
 function updatePhysics(dt, inForward, inStrafe){
-  const canRun = running && energy > 0;
-  const speed = WALK_SPEED * (canRun ? RUN_MULT : 1);
+  const speed = WALK_SPEED * (running ? RUN_MULT : 1);
   _fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
   _right.set(Math.cos(yaw), 0, -Math.sin(yaw));
 
@@ -1583,8 +1604,8 @@ function beginGame(selectedMode){
   yaw = 0; pitch = 0;
   camera.position.copy(player.position);
   cycleTime = 0;
-  energy = MAX_ENERGY;
-  updateEnergyUI();
+  gameOverActive = false;
+  document.getElementById('gameOverScreen').style.display = 'none';
   animate();
 }
 
@@ -1594,7 +1615,7 @@ document.getElementById('btnMobile').addEventListener('click', ()=>beginGame('mo
 /* ---------------- HUD ---------------- */
 const hudTime = document.getElementById('hudTime');
 const hudPos = document.getElementById('hudPos');
-function formatTime(ms){
+function formatTimeHud(ms){
   const s = Math.floor(ms/1000);
   const hh = String(Math.floor(s/3600)).padStart(2,'0');
   const mm = String(Math.floor((s%3600)/60)).padStart(2,'0');
@@ -1611,6 +1632,12 @@ function animate(){
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.06);
 
+  if(gameOverActive){
+    updateGameOver(dt);
+    renderer.render(scene, camera);
+    return;
+  }
+
   if(!loadingComplete){
     initialLoadStep();
     renderer.render(scene, camera);
@@ -1621,37 +1648,24 @@ function animate(){
 
   const inVec = mode==='pc' ? pcInputVector() : mobileInputVector();
   
-  const isRunningNow = running && !flying && energy > 0;
-  const isFlyingNow = flying && energy > 0;
-  updateEnergy(dt, isRunningNow, isFlyingNow);
-  
-  const canRun = running && energy > 0;
-  const canFly = flying && energy > 0;
-  
-  if(flying && !canFly){
-    setFlying(false);
-  }
-  if(running && !canRun){
-    running = false;
-    btnRun.classList.remove('active');
-  }
-  
-  // CALCULA VELOCIDADE ATUAL DO JOGADOR
-  let currentSpeed = 0;
-  if(canFly){
-    currentSpeed = FLY_SPEED;
+  if(flying){
     const ascend = mode==='pc' ? !!keys['Space'] : flyUpHeld;
     const descend = mode==='pc' ? !!(keys['ShiftLeft']||keys['ShiftRight']||keys['ControlLeft']) : flyDownHeld;
     updateFlight(dt, inVec.f, inVec.s, ascend, descend);
   } else {
-    const speed = WALK_SPEED * (canRun ? RUN_MULT : 1);
-    currentSpeed = speed;
     updatePhysics(dt, inVec.f, inVec.s);
+  }
+
+  // Velocidade atual do jogador
+  let currentSpeed = 0;
+  if(flying){
+    currentSpeed = FLY_SPEED;
+  } else {
+    currentSpeed = WALK_SPEED * (running ? RUN_MULT : 1);
   }
 
   updateFlashlight();
   
-  // ATUALIZA ANOMALIA (com velocidade do jogador)
   updateAnomalia(dt, player.position, isDay, currentSpeed);
 
   _fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));
@@ -1659,7 +1673,7 @@ function animate(){
   animateChunks(dt);
 
   const elapsed = performance.now() - gameStartTime;
-  hudTime.textContent = formatTime(elapsed);
+  hudTime.textContent = formatTimeHud(elapsed);
   hudPos.textContent = player.position.x.toFixed(1)+', '+(player.position.y-EYE_HEIGHT).toFixed(1)+', '+player.position.z.toFixed(1);
 
   renderer.render(scene, camera);
