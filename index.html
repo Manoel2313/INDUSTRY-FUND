@@ -1,656 +1,968 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>📖 Livro · Revolução Industrial no Brasil</title>
-    <style>
-        /* ----- RESET & BASE (TEMA ESCURO) ----- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #0d0f0d;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem 1rem;
-        }
-
-        /* ----- LIVRO (container principal) ----- */
-        .livro {
-            max-width: 1100px;
-            width: 100%;
-            background: #1a201a;
-            border-radius: 20px 20px 16px 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
-            overflow: hidden;
-            border: 2px solid #2a3a2a;
-            position: relative;
-        }
-
-        /* faixa bandeira (topo do livro) */
-        .bandeira-topo {
-            height: 10px;
-            background: linear-gradient(90deg,
-                    #009739 0%,
-                    #009739 33%,
-                    #FEDB00 33%,
-                    #FEDB00 66%,
-                    #012169 66%,
-                    #012169 100%);
-        }
-
-        /* ----- CABEÇALHO DO LIVRO ----- */
-        .cabecalho-livro {
-            background: #1f261f;
-            padding: 1.2rem 2rem 0.8rem 2rem;
-            border-bottom: 3px solid #2a3a2a;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .cabecalho-livro .titulo-livro {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .cabecalho-livro .titulo-livro h1 {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: #FEDB00;
-            letter-spacing: -0.02em;
-        }
-
-        .cabecalho-livro .titulo-livro .icone-livro {
-            font-size: 2rem;
-        }
-
-        .cabecalho-livro .pagina-indicador {
-            background: #012169;
-            color: white;
-            padding: 0.2rem 1.2rem;
-            border-radius: 40px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        /* ----- NAVEGAÇÃO POR ABAS (capítulos) ----- */
-        .nav-abas {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.3rem;
-            background: #151a15;
-            padding: 0.6rem 1.5rem 0 1.5rem;
-            border-bottom: 3px solid #2a3a2a;
-        }
-
-        .aba {
-            padding: 0.5rem 1.4rem;
-            border-radius: 16px 16px 0 0;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #8aaa8a;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-            border: 2px solid transparent;
-            border-bottom: none;
-        }
-
-        .aba:hover {
-            background: #2a3a2a;
-            color: #FEDB00;
-        }
-
-        .aba.ativa {
-            background: #1a201a;
-            color: #FEDB00;
-            border-color: #2a3a2a;
-            border-bottom: 3px solid #1a201a;
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .aba .numero-aba {
-            background: #2a3a2a;
-            color: #8aaa8a;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            margin-right: 6px;
-            font-weight: 700;
-            transition: 0.2s;
-        }
-
-        .aba.ativa .numero-aba {
-            background: #FEDB00;
-            color: #012169;
-        }
-
-        .aba:hover .numero-aba {
-            background: #FEDB00;
-            color: #012169;
-        }
-
-        /* ----- ÁREA DE CONTEÚDO (páginas) ----- */
-        .pagina-container {
-            padding: 2rem 2.5rem 2.5rem 2.5rem;
-            min-height: 420px;
-            background: #1a201a;
-        }
-
-        .pagina {
-            display: none;
-            animation: fadeIn 0.3s ease;
-            color: #d4e8d4;
-        }
-
-        .pagina.ativa {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* ----- ESTILOS DAS PÁGINAS (tema escuro) ----- */
-        .pagina h2 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #FEDB00;
-            border-bottom: 5px solid #009739;
-            padding-bottom: 0.3rem;
-            display: inline-block;
-            margin-bottom: 1.2rem;
-        }
-
-        .pagina h3 {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #5cb85c;
-            margin-top: 1.2rem;
-            margin-bottom: 0.4rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .pagina p {
-            font-size: 1rem;
-            line-height: 1.8;
-            color: #c8dcc8;
-            margin-bottom: 0.8rem;
-        }
-
-        .pagina ul {
-            list-style: none;
-            padding: 0;
-            margin: 0.5rem 0 1rem 0;
-        }
-
-        .pagina ul li {
-            padding: 0.4rem 0 0.4rem 2rem;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%23009739" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>') left center no-repeat;
-            background-size: 1.1rem;
-            border-bottom: 1px dashed #2a3a2a;
-            font-size: 0.98rem;
-            line-height: 1.6;
-            color: #c8dcc8;
-        }
-
-        .pagina ul li:last-child {
-            border-bottom: none;
-        }
-
-        .pagina ul li strong {
-            color: #FEDB00;
-        }
-
-        .destaque-amarelo {
-            background: #FEDB00;
-            color: #012169;
-            padding: 0.05rem 0.4rem;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-
-        .destaque-verde {
-            background: #009739;
-            color: white;
-            padding: 0.05rem 0.4rem;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-
-        .card-info {
-            background: #1f261f;
-            border-radius: 16px;
-            padding: 1rem 1.5rem;
-            margin: 0.8rem 0;
-            border-left: 8px solid #009739;
-        }
-
-        .card-info.azul {
-            border-left-color: #012169;
-        }
-
-        .card-info.amarelo {
-            border-left-color: #FEDB00;
-        }
-
-        .card-info h4 {
-            color: #FEDB00;
-            font-size: 1.1rem;
-            margin-bottom: 0.2rem;
-        }
-
-        .card-info p {
-            margin-bottom: 0;
-            color: #c8dcc8;
-        }
-
-        .card-info ul li {
-            border-bottom-color: #2a3a2a;
-        }
-
-        .grid-etapas {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin: 0.8rem 0;
-        }
-
-        .etapa-card {
-            background: #1f261f;
-            border-radius: 16px;
-            padding: 0.8rem 1.2rem;
-            border-left: 6px solid #012169;
-        }
-
-        .etapa-card:nth-child(2) {
-            border-left-color: #FEDB00;
-        }
-        .etapa-card:nth-child(3) {
-            border-left-color: #009739;
-        }
-        .etapa-card:nth-child(4) {
-            border-left-color: #012169;
-        }
-
-        .etapa-card h4 {
-            font-size: 1rem;
-            color: #FEDB00;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .etapa-card p {
-            font-size: 0.92rem;
-            line-height: 1.6;
-            margin-bottom: 0;
-            color: #c8dcc8;
-        }
-
-        .badge {
-            background: #012169;
-            color: white;
-            font-weight: 600;
-            padding: 0.05rem 0.8rem;
-            border-radius: 40px;
-            font-size: 0.7rem;
-            display: inline-block;
-        }
-
-        .badge-verde {
-            background: #009739;
-        }
-
-        .badge-vermelho {
-            background: #b11f1f;
-        }
-
-        .futuro-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin: 0.8rem 0;
-        }
-
-        .futuro-card {
-            background: #1f261f;
-            border-radius: 16px;
-            padding: 1rem 1.2rem;
-            border-top: 6px solid #009739;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .futuro-card.negativo {
-            border-top-color: #b11f1f;
-        }
-
-        .futuro-card h4 {
-            font-size: 1.1rem;
-            color: #FEDB00;
-        }
-
-        .futuro-card.negativo h4 {
-            color: #e06060;
-        }
-
-        .futuro-card ul {
-            list-style: none;
-            padding: 0;
-            margin: 0.3rem 0 0 0;
-        }
-
-        .futuro-card ul li {
-            padding: 0.2rem 0 0.2rem 1.4rem;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%23009739" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>') left center no-repeat;
-            background-size: 0.9rem;
-            border-bottom: none;
-            padding-left: 1.4rem;
-            color: #c8dcc8;
-            border-bottom: 1px dashed #2a3a2a;
-        }
-
-        .futuro-card ul li:last-child {
-            border-bottom: none;
-        }
-
-        .futuro-card.negativo ul li {
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%22b11f1f%22" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>') left center no-repeat;
-            background-size: 0.9rem;
-        }
-
-        .futuro-card p {
-            color: #c8dcc8;
-        }
-
-        .mensagem-destaque {
-            background: #FEDB00;
-            color: #012169;
-            padding: 0.6rem 1.5rem;
-            border-radius: 40px;
-            font-weight: 700;
-            text-align: center;
-            margin: 0.8rem 0;
-            font-size: 1.05rem;
-        }
-
-        .tooltip-leve {
-            background: #1f261f;
-            border-radius: 40px;
-            padding: 0.1rem 1.2rem;
-            font-size: 0.8rem;
-            color: #8aaa8a;
-            display: inline-block;
-            margin-top: 0.3rem;
-            border: 1px solid #2a3a2a;
-        }
-
-        /* ----- PÁGINA 1 ESPECIAL (pedido de desculpas) ----- */
-        .pagina-desculpas {
-            text-align: center;
-            padding: 1.5rem 0;
-        }
-
-        .pagina-desculpas .emoji-grande {
-            font-size: 4rem;
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-
-        .pagina-desculpas .texto-desculpas {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #FEDB00;
-            line-height: 1.6;
-            max-width: 700px;
-            margin: 0 auto;
-        }
-
-        .pagina-desculpas .texto-desculpas .destaque-vermelho {
-            color: #e06060;
-        }
-
-        .pagina-desculpas .texto-secundario {
-            font-size: 1.1rem;
-            color: #8aaa8a;
-            margin-top: 0.5rem;
-            font-style: italic;
-        }
-
-        .pagina-desculpas .linha-decorativa {
-            width: 80px;
-            height: 4px;
-            background: linear-gradient(90deg, #009739, #FEDB00, #012169);
-            margin: 1rem auto;
-            border-radius: 10px;
-        }
-
-        /* ----- RODAPÉ ----- */
-        .rodape-livro {
-            background: #1f261f;
-            padding: 0.8rem 2rem;
-            border-top: 2px solid #2a3a2a;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.8rem;
-            color: #8aaa8a;
-        }
-
-        .rodape-livro .nav-paginas {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .rodape-livro .nav-paginas button {
-            background: #1a201a;
-            border: 2px solid #2a3a2a;
-            border-radius: 12px;
-            padding: 0.2rem 1rem;
-            font-weight: 600;
-            color: #8aaa8a;
-            cursor: pointer;
-            transition: 0.2s;
-            font-family: inherit;
-            font-size: 0.8rem;
-        }
-
-        .rodape-livro .nav-paginas button:hover {
-            background: #FEDB00;
-            color: #012169;
-            border-color: #FEDB00;
-        }
-
-        .rodape-livro .nav-paginas button:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        .rodape-livro .nav-paginas button:disabled:hover {
-            background: #1a201a;
-            color: #8aaa8a;
-            border-color: #2a3a2a;
-        }
-
-        /* ----- RESPONSIVO ----- */
-        @media (max-width: 820px) {
-            .pagina-container {
-                padding: 1.5rem 1.2rem;
-            }
-
-            .grid-etapas {
-                grid-template-columns: 1fr;
-            }
-
-            .futuro-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .nav-abas {
-                padding: 0.4rem 0.8rem 0 0.8rem;
-                gap: 0.2rem;
-            }
-
-            .aba {
-                padding: 0.4rem 0.8rem;
-                font-size: 0.75rem;
-            }
-
-            .cabecalho-livro .titulo-livro h1 {
-                font-size: 1.2rem;
-            }
-
-            .pagina-desculpas .texto-desculpas {
-                font-size: 1.1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .livro {
-                border-radius: 12px;
-            }
-
-            .pagina-container {
-                padding: 1rem 0.8rem;
-            }
-
-            .aba .numero-aba {
-                display: none;
-            }
-
-            .cabecalho-livro {
-                padding: 0.8rem 1rem;
-                flex-direction: column;
-                gap: 0.4rem;
-                align-items: flex-start;
-            }
-
-            .rodape-livro {
-                flex-direction: column;
-                gap: 0.6rem;
-                text-align: center;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>INDUSTRY FUND</title>
+<style>
+  :root{
+    --gray-950:#0c0d0f;
+    --gray-900:#141518;
+    --gray-800:#202226;
+    --gray-700:#33363b;
+    --gray-500:#6b6f76;
+    --gray-300:#a8acb3;
+    --gray-100:#e4e6e9;
+    --accent:#c8901f;
+    --font-ui: 'Consolas','Courier New',monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#0c0d0f;font-family:var(--font-ui);}
+  #renderCanvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;outline:none;}
+
+  /* ---------- START SCREEN ---------- */
+  #startScreen{
+    position:absolute;inset:0;z-index:50;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:
+      linear-gradient(180deg, rgba(12,13,15,0.65), rgba(12,13,15,0.92)),
+      repeating-linear-gradient(90deg, #17181b 0px, #17181b 2px, #121316 2px, #121316 64px);
+    gap:48px;
+  }
+  #startTitle{
+    font-family:var(--font-ui);
+    font-weight:700;
+    letter-spacing:14px;
+    font-size:clamp(28px,6vw,58px);
+    color:var(--gray-100);
+    text-transform:uppercase;
+    text-align:center;
+    text-shadow:0 0 24px rgba(200,144,31,0.15), 0 2px 0 #000;
+    border-top:2px solid var(--gray-700);
+    border-bottom:2px solid var(--gray-700);
+    padding:18px 26px;
+  }
+  #startSub{
+    margin-top:-30px;
+    color:var(--gray-500);
+    letter-spacing:5px;
+    font-size:11px;
+    text-transform:uppercase;
+  }
+  #platformRow{display:flex;gap:22px;}
+  .platBtn{
+    font-family:var(--font-ui);
+    letter-spacing:4px;
+    font-size:15px;
+    padding:16px 40px;
+    color:var(--gray-100);
+    background:var(--gray-800);
+    border:1px solid var(--gray-700);
+    cursor:pointer;
+    text-transform:uppercase;
+    transition:background .15s, border-color .15s, transform .1s;
+  }
+  .platBtn:hover{background:var(--gray-700);border-color:var(--accent);}
+  .platBtn:active{transform:scale(0.97);}
+
+  /* ---------- LOADING ---------- */
+  #loadingScreen{
+    position:absolute;inset:0;z-index:40;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    background:var(--gray-950);
+  }
+  #loadingLabel{color:var(--gray-300);letter-spacing:5px;font-size:12px;text-transform:uppercase;}
+  #loadingBarOuter{width:min(420px,70vw);height:6px;background:var(--gray-800);border:1px solid var(--gray-700);}
+  #loadingBarInner{width:0%;height:100%;background:var(--accent);transition:width .12s linear;}
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute;top:14px;left:16px;z-index:20;
+    color:var(--gray-100);font-family:var(--font-ui);font-size:13px;letter-spacing:1px;
+    text-shadow:0 1px 3px rgba(0,0,0,0.9);
+    display:none;line-height:1.6;pointer-events:none;
+  }
+  #hud .lbl{color:var(--gray-500);}
+  #crosshair{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:6px;height:6px;border-radius:50%;background:rgba(230,230,230,0.75);
+    z-index:20;display:none;pointer-events:none;
+  }
+  #pcHint{
+    position:absolute;bottom:14px;left:16px;z-index:20;color:var(--gray-500);
+    font-family:var(--font-ui);font-size:11px;letter-spacing:1px;display:none;pointer-events:none;
+  }
+
+  /* ---------- MOBILE CONTROLS ---------- */
+  #mobileControls{position:absolute;inset:0;z-index:20;display:none;}
+  #joystickZone{
+    position:absolute;left:26px;bottom:26px;width:130px;height:130px;
+    border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);
+    touch-action:none;
+  }
+  #joystickKnob{
+    position:absolute;left:35px;top:35px;width:60px;height:60px;border-radius:50%;
+    background:rgba(230,230,230,0.35);border:1px solid rgba(255,255,255,0.4);
+    pointer-events:none;
+  }
+  #btnJump{
+    position:absolute;right:28px;bottom:100px;width:78px;height:78px;border-radius:50%;
+    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);
+    color:var(--gray-100);font-family:var(--font-ui);font-size:11px;letter-spacing:1px;
+    display:flex;align-items:center;justify-content:center;touch-action:none;
+  }
+  #btnRun{
+    position:absolute;right:24px;bottom:24px;width:64px;height:64px;border-radius:50%;
+    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);
+    color:var(--gray-100);font-family:var(--font-ui);font-size:10px;letter-spacing:1px;
+    display:flex;align-items:center;justify-content:center;touch-action:none;
+  }
+  #btnRun.active{background:var(--accent);border-color:var(--accent);color:#111;}
+  #btnFly{
+    position:absolute;right:26px;top:22px;width:70px;height:70px;border-radius:50%;
+    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);
+    color:var(--gray-100);font-family:var(--font-ui);font-size:11px;letter-spacing:1px;
+    display:flex;align-items:center;justify-content:center;touch-action:none;
+  }
+  #btnFly.active{background:#3a86c8;border-color:#3a86c8;color:#0c0d0f;}
+  #camLookZone{position:absolute;inset:0;touch-action:none;}
+</style>
 </head>
 <body>
 
-    <!-- ====== LIVRO ====== -->
-    <div class="livro" id="livro">
+<canvas id="renderCanvas"></canvas>
 
-        <!-- faixa bandeira -->
-        <div class="bandeira-topo"></div>
+<div id="startScreen">
+  <div>
+    <div id="startTitle">Industry&nbsp;Fund</div>
+    <div id="startSub">explora&ccedil;&atilde;o industrial procedural</div>
+  </div>
+  <div id="platformRow">
+    <button class="platBtn" id="btnPC">PC</button>
+    <button class="platBtn" id="btnMobile">MOBILE</button>
+  </div>
+</div>
 
-        <!-- cabeçalho -->
-        <div class="cabecalho-livro">
-            <div class="titulo-livro">
-                <span class="icone-livro">📖</span>
-                <h1>Revolução Industrial no Brasil</h1>
-            </div>
-            <div class="pagina-indicador" id="indicadorPagina">Página 1 de 7</div>
-        </div>
+<div id="loadingScreen">
+  <div id="loadingLabel">CARREGANDO 0%</div>
+  <div id="loadingBarOuter"><div id="loadingBarInner"></div></div>
+</div>
 
-        <!-- navegação por abas -->
-        <div class="nav-abas" id="navAbas">
-            <button class="aba ativa" data-pagina="1">
-                <span class="numero-aba">1</span> Desculpas
-            </button>
-            <button class="aba" data-pagina="2">
-                <span class="numero-aba">2</span> O que é
-            </button>
-            <button class="aba" data-pagina="3">
-                <span class="numero-aba">3</span> Como começou
-            </button>
-            <button class="aba" data-pagina="4">
-                <span class="numero-aba">4</span> Desenvolvimento
-            </button>
-            <button class="aba" data-pagina="5">
-                <span class="numero-aba">5</span> Presente
-            </button>
-            <button class="aba" data-pagina="6">
-                <span class="numero-aba">6</span> Futuro (2050)
-            </button>
-            <button class="aba" data-pagina="7">
-                <span class="numero-aba">7</span> Resumo
-            </button>
-        </div>
+<div id="hud">
+  <div><span class="lbl">Tempo de jogo:</span> <span id="hudTime">00:00:00</span></div>
+  <div><span class="lbl">Posi&ccedil;&atilde;o:</span> <span id="hudPos">0.0, 0.0, 0.0</span></div>
+</div>
+<div id="crosshair"></div>
+<div id="pcHint">WASD mover &middot; ESPA&Ccedil;O pular/subir &middot; Q correr &middot; E voar &middot; MOUSE olhar (clique para travar o cursor)</div>
 
-        <!-- ====== PÁGINAS ====== -->
-        <div class="pagina-container">
+<div id="mobileControls">
+  <div id="camLookZone"></div>
+  <div id="joystickZone"><div id="joystickKnob"></div></div>
+  <div id="btnJump">PULAR</div>
+  <div id="btnRun">CORRER</div>
+  <div id="btnFly">VOAR</div>
+</div>
 
-            <!-- PÁGINA 1: DESCULPAS -->
-            <div class="pagina ativa" id="pagina1">
-                <div class="pagina-desculpas">
-                    <span class="emoji-grande">🙏</span>
-                    <div class="texto-desculpas">
-                        Segunda tentativa de explicação do conteúdo...<br>
-                        Peço um <span class="destaque-vermelho">mísero perdão</span> sobre a tentativa <span class="destaque-vermelho">miserável</span> da explicação anterior...
-                    </div>
-                    <div class="linha-decorativa"></div>
-                    <div class="texto-secundario">
-                        Mas agora, com este livro, vamos aprender direito! 📚
-                    </div>
-                    <div style="margin-top: 1.2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                        <span style="background: #009739; color: white; padding: 0.2rem 1.2rem; border-radius: 40px; font-weight: 600;">✅ texto revisado</span>
-                        <span style="background: #FEDB00; color: #012169; padding: 0.2rem 1.2rem; border-radius: 40px; font-weight: 600;">📖 linguagem fácil</span>
-                        <span style="background: #012169; color: white; padding: 0.2rem 1.2rem; border-radius: 40px; font-weight: 600;">🇧🇷 cores do Brasil</span>
-                    </div>
-                    <p style="margin-top: 1.2rem; font-size: 0.95rem; color: #8aaa8a;">
-                        Clique nas abas acima para navegar pelos capítulos!
-                    </p>
-                </div>
-            </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
 
-            <!-- PÁGINA 2: O QUE É -->
-            <div class="pagina" id="pagina2">
-                <h2>🤔 O que é a Revolução Industrial?</h2>
-                <p>A <strong>Revolução Industrial</strong> foi um período em que as <strong>máquinas</strong> começaram a substituir o trabalho feito à mão. Com isso, as fábricas passaram a produzir <strong>mais produtos em menos tempo</strong>.</p>
+/* ======================================================================
+   INDUSTRY FUND
+   Mundo procedural infinito em chunks, 1 jogador / 1 mundo / 1 física,
+   input alternável PC (WASD+mouse) / Mobile (joystick+touch).
+   ====================================================================== */
 
-                <div class="card-info">
-                    <h4>🔍 O que mudou?</h4>
-                    <ul>
-                        <li>Mudou a <strong>economia</strong> do país — antes era só agricultura, depois vieram as fábricas</li>
-                        <li>Criou <strong>novos empregos</strong> nas cidades — milhões de pessoas foram trabalhar nas indústrias</li>
-                        <li>Transformou a <strong>vida das pessoas</strong> — novas profissões, novas moradias, novas formas de viver</li>
-                    </ul>
-                </div>
+/* ---------------- CONFIG ---------------- */
+const CHUNK_SIZE      = 100;      // metros por chunk
+const ACTIVE_RADIUS    = 600;     // raio de geração ativa (spec: 600m)
+const UNLOAD_MARGIN    = 60;      // começa a desmontar além de ACTIVE_RADIUS
+const UNLOAD_RADIUS    = ACTIVE_RADIUS + UNLOAD_MARGIN;
+const INITIAL_RADIUS   = 220;     // precisa estar pronto antes de esconder o loading
+const FADE_TIME        = 1.1;     // segundos para montar/desmontar
 
-                <div class="card-info azul">
-                    <h4>🏭 O que são fábricas?</h4>
-                    <p>São lugares onde <strong>máquinas</strong> transformam matérias-primas (como algodão, ferro, plástico) em <strong>produtos</strong> (como roupas, carros, alimentos). As fábricas são o coração da indústria!</p>
-                </div>
+const EYE_HEIGHT   = 1.7;
+const PLAYER_RADIUS = 0.4;
+const WALK_SPEED   = 4.2;
+const RUN_MULT     = 5;
+const GRAVITY      = -24;
+const JUMP_SPEED   = 8.2;
+const FLY_SPEED    = WALK_SPEED * RUN_MULT * 3; // 3x mais rápido que a corrida
 
-                <span class="tooltip-leve">🏭 máquinas + fábricas = revolução na economia</span>
-            </div>
+/* ---------------- THREE SETUP ---------------- */
+const canvas = document.getElementById('renderCanvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 
-            <!-- PÁGINA 3: COMO COMEÇOU -->
-            <div class="pagina" id="pagina3">
-                <h2>⏳ Como começou no Brasil?</h2>
-                <p>No Brasil, a industrialização começou <strong>mais tarde</strong> do que na Europa. Antes, a economia era baseada na agricultura, pr
+const SKY_COLOR = new THREE.Color(0xb9c2c9);
+const scene = new THREE.Scene();
+scene.background = SKY_COLOR;
+scene.fog = new THREE.Fog(SKY_COLOR.getHex(), 120, UNLOAD_RADIUS + 40);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, UNLOAD_RADIUS+200);
+camera.rotation.order = 'YXZ';
+
+// well-lit, no reliance on darkness
+scene.add(new THREE.HemisphereLight(0xdfe6ea, 0x3a3d42, 1.15));
+const sun = new THREE.DirectionalLight(0xfff4de, 1.15);
+sun.position.set(180,260,120);
+scene.add(sun);
+const fillLight = new THREE.DirectionalLight(0xaebbc9, 0.45);
+fillLight.position.set(-160,120,-140);
+scene.add(fillLight);
+scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+
+function onResize(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+/* ---------------- GEOMETRY TEMPLATE (shared unit box) ---------------- */
+const UNIT_BOX = new THREE.BoxGeometry(1,1,1).toNonIndexed();
+const BASE_POS = UNIT_BOX.attributes.position.array;
+const BASE_NORM = UNIT_BOX.attributes.normal.array;
+const VERTS_PER_BOX = BASE_POS.length/3; // 36
+
+function box(x,y,z,w,h,d,color){ return {x,y,z,w,h,d,color}; }
+
+/* ---------------- SEEDED RNG ---------------- */
+function hashSeed(cx,cz,salt){
+  let h = 2166136261;
+  h = Math.imul(h ^ (cx|0), 16777619);
+  h = Math.imul(h ^ (cz|0), 16777619);
+  h = Math.imul(h ^ (salt|0), 16777619);
+  h = Math.imul(h ^ 0x9e3779b9, 16777619);
+  return h>>>0;
+}
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a>>>15), 1 | a);
+    t = (t + Math.imul(t ^ (t>>>7), 61 | t)) ^ t;
+    return ((t ^ (t>>>14))>>>0) / 4294967296;
+  };
+}
+
+/* ---------------- MATERIAL PALETTE (imundo / sujo / industrial) ---------------- */
+function grayColor(rng, lo, hi, tint){
+  const l = lo + rng()*(hi-lo);
+  const hue = tint===undefined ? 0.58 + (rng()-0.5)*0.07 : tint;
+  const sat = 0.03 + rng()*0.06;
+  const c = new THREE.Color();
+  c.setHSL(hue, sat, l);
+  return c;
+}
+function groundColor(rng){ return grayColor(rng, 0.08, 0.15); }
+function structColor(rng){
+  // base metal/concreto, mas mais escuro e sujo que antes
+  const c = grayColor(rng, 0.14, 0.42);
+  if(rng() < 0.22){
+    // mancha de sujeira/oleo/ferrugem sobre a estrutura
+    return grimeColor(rng);
+  }
+  return c;
+}
+function grimeColor(rng){
+  const c = new THREE.Color();
+  const pick = rng();
+  if(pick < 0.4){ c.setHSL(0.08+rng()*0.04, 0.4+rng()*0.15, 0.16+rng()*0.14); }        // ferrugem
+  else if(pick < 0.7){ c.setHSL(0.24+rng()*0.05, 0.2+rng()*0.15, 0.10+rng()*0.10); }   // mofo/oleo esverdeado
+  else { c.setHSL(0.0, 0.0, 0.05+rng()*0.06); }                                        // fuligem preta
+  return c;
+}
+function accentColor(rng){
+  if(rng() < 0.22){ const c = new THREE.Color(); c.setHSL(0.09+rng()*0.03, 0.4, 0.26+rng()*0.16); return c; }
+  if(rng() < 0.30) return grimeColor(rng);
+  return structColor(rng);
+}
+
+/* ---------------- CHUNK CONTENT GENERATION ----------------
+   Cada chunk empilha VÁRIAS camadas (prédios + pilares + muros +
+   túneis + viadutos), com margens mínimas e sobreposição proposital,
+   além de "perfuradores": vigas/pistas retas que atravessam tudo sem
+   nenhuma lógica estrutural — ruas cruzando pilares, viadutos cravados
+   no meio de muralhas, prédios colados uns nos outros. */
+
+function genBuildings(boxes, ox, oz, rng, density){
+  const count = density + Math.floor(rng()*(density+2));
+  for(let i=0;i<count;i++){
+    const w = 5 + rng()*16, d = 5 + rng()*16, h = 6 + rng()*40;
+    // margem quase nula: deixa empilhar e invadir os vizinhos
+    const x = ox - 4 + rng()*(CHUNK_SIZE+8-w);
+    const z = oz - 4 + rng()*(CHUNK_SIZE+8-d);
+    boxes.push(box(x+w/2, h/2, z+d/2, w, h, d, structColor(rng)));
+    if(rng()<0.5){
+      boxes.push(box(x+w/2, h+4, z+d/2, w*(0.3+rng()*0.4), 6+rng()*10, d*(0.3+rng()*0.4), accentColor(rng)));
+    }
+    if(rng()<0.4){
+      boxes.push(box(x+w/2, h*(0.3+rng()*0.5), z+d/2 + d*0.5, w*0.8, 0.7, 1.4, accentColor(rng)));
+    }
+    if(rng()<0.3){
+      // um segundo volume colado/atravessado no primeiro, sem sentido nenhum
+      boxes.push(box(x+w/2 + (rng()-0.5)*w*0.6, h*(0.2+rng()*0.6), z+d/2 + (rng()-0.5)*d*0.6,
+        3+rng()*8, 3+rng()*8, 3+rng()*8, accentColor(rng)));
+    }
+  }
+}
+
+function genMegastructure(boxes, ox, oz, rng){
+  const w = 20 + rng()*26, d = 20 + rng()*26, h = 90 + rng()*180;
+  const x = ox + CHUNK_SIZE*(0.3+rng()*0.4), z = oz + CHUNK_SIZE*(0.3+rng()*0.4);
+  boxes.push(box(x, h/2, z, w, h, d, structColor(rng)));
+  const beams = 4 + Math.floor(rng()*6);
+  for(let i=0;i<beams;i++){
+    const by = 10 + (h-30) * (i/(beams-1||1));
+    boxes.push(box(x, by, z, w+4+rng()*10, 1.6+rng()*2, d+4+rng()*10, accentColor(rng)));
+  }
+}
+
+function genBridge(boxes, ox, oz, rng){
+  const alongX = rng() < 0.5;
+  const y = 6 + rng()*46; // qualquer altura, inclusive cravado dentro de prédios
+  const thickness = 1.8 + rng()*2.5, width = 5 + rng()*7;
+  const lateral = ox_lateral(ox, oz, alongX, rng);
+  if(alongX){
+    boxes.push(box(ox+CHUNK_SIZE/2, y, lateral, CHUNK_SIZE*1.15, thickness, width, structColor(rng)));
+    boxes.push(box(ox+4, Math.max(1,y/2), lateral, 3.5, Math.max(2,y), 3.5, structColor(rng)));
+    boxes.push(box(ox+CHUNK_SIZE-4, Math.max(1,y/2), lateral, 3.5, Math.max(2,y), 3.5, structColor(rng)));
+  } else {
+    boxes.push(box(lateral, y, oz+CHUNK_SIZE/2, width, thickness, CHUNK_SIZE*1.15, structColor(rng)));
+    boxes.push(box(lateral, Math.max(1,y/2), oz+4, 3.5, Math.max(2,y), 3.5, structColor(rng)));
+    boxes.push(box(lateral, Math.max(1,y/2), oz+CHUNK_SIZE-4, 3.5, Math.max(2,y), 3.5, structColor(rng)));
+  }
+}
+function ox_lateral(ox, oz, alongX, rng){
+  return alongX ? (oz + 15 + rng()*(CHUNK_SIZE-30)) : (ox + 15 + rng()*(CHUNK_SIZE-30));
+}
+
+function genTunnel(boxes, ox, oz, rng){
+  const alongX = rng() < 0.5;
+  const h = 7 + rng()*5, w = 8 + rng()*5, wallT = 1.3;
+  const jx = (rng()-0.5)*30, jz = (rng()-0.5)*30; // fora do centro: colide com o resto
+  const cx = ox+CHUNK_SIZE/2+jx, cz = oz+CHUNK_SIZE/2+jz;
+  if(alongX){
+    boxes.push(box(cx, h/2, cz - w/2, CHUNK_SIZE*1.1, h, wallT, structColor(rng)));
+    boxes.push(box(cx, h/2, cz + w/2, CHUNK_SIZE*1.1, h, wallT, structColor(rng)));
+    boxes.push(box(cx, h, cz, CHUNK_SIZE*1.1, wallT, w, structColor(rng)));
+  } else {
+    boxes.push(box(cx - w/2, h/2, cz, wallT, h, CHUNK_SIZE*1.1, structColor(rng)));
+    boxes.push(box(cx + w/2, h/2, cz, wallT, h, CHUNK_SIZE*1.1, structColor(rng)));
+    boxes.push(box(cx, h, cz, w, wallT, CHUNK_SIZE*1.1, structColor(rng)));
+  }
+}
+
+function genWall(boxes, ox, oz, rng){
+  const alongX = rng() < 0.5;
+  const h = 14 + rng()*44, len = CHUNK_SIZE*(0.6+rng()*0.35), thickness = 2 + rng()*2.5;
+  const offsetFrac = rng()*0.5; // sem preocupação de deixar passagem "limpa"
+  const lateralFrac = rng();
+  if(alongX){
+    boxes.push(box(ox + CHUNK_SIZE*offsetFrac + len/2, h/2, oz + CHUNK_SIZE*lateralFrac, len, h, thickness, structColor(rng)));
+  } else {
+    boxes.push(box(ox + CHUNK_SIZE*lateralFrac, h/2, oz + CHUNK_SIZE*offsetFrac + len/2, thickness, h, len, structColor(rng)));
+  }
+}
+
+function genPillarfield(boxes, ox, oz, rng){
+  const gridN = 3 + Math.floor(rng()*2), spacing = 8 + rng()*6;
+  const cx = ox + CHUNK_SIZE*(0.2+rng()*0.5) - (gridN*spacing)/2;
+  const cz = oz + CHUNK_SIZE*(0.2+rng()*0.5) - (gridN*spacing)/2;
+  for(let i=0;i<gridN;i++){
+    for(let j=0;j<gridN;j++){
+      const h = 12 + rng()*54; // alturas desiguais, grade torta e quebrada
+      const pR = 1.1 + rng()*1.6;
+      const jitterX = (rng()-0.5)*4, jitterZ = (rng()-0.5)*4;
+      boxes.push(box(cx+i*spacing+jitterX, h/2, cz+j*spacing+jitterZ, pR, h, pR, structColor(rng)));
+    }
+  }
+  if(rng()<0.6){
+    const platY = 10+rng()*40;
+    boxes.push(box(cx+(gridN*spacing)/2, platY, cz+(gridN*spacing)/2, gridN*spacing+8, 1.6+rng()*2, gridN*spacing+8, accentColor(rng)));
+  }
+}
+
+function genClutterAndPiercers(boxes, ox, oz, rng, count){
+  // tranqueira / entulho / dutos: pequenos volumes por toda parte
+  for(let i=0;i<count;i++){
+    const s = 1 + rng()*3.5;
+    const x = ox + rng()*CHUNK_SIZE, z = oz + rng()*CHUNK_SIZE;
+    const y = rng()*rng()*40; // mais provável perto do chão, mas pode estar suspenso
+    boxes.push(box(x, y+s/2, z, s*(0.5+rng()), s*(0.5+rng()*2), s*(0.5+rng()), grimeColor(rng)));
+  }
+  // perfuradores: vigas/vias retas que atravessam TUDO sem nenhum motivo —
+  // ruas cortando pilares, viadutos cravados em muralhas, dutos cruzados
+  const piercers = 1 + Math.floor(rng()*3);
+  for(let i=0;i<piercers;i++){
+    const alongX = rng()<0.5;
+    const y = 1.5 + rng()*55;
+    const thickness = 1.2 + rng()*3.2;
+    const width = 2.5 + rng()*7;
+    const pos = rng()*CHUNK_SIZE;
+    if(alongX){
+      boxes.push(box(ox+CHUNK_SIZE/2, y, oz+pos, CHUNK_SIZE*1.2, thickness, width, accentColor(rng)));
+    } else {
+      boxes.push(box(ox+pos, y, oz+CHUNK_SIZE/2, width, thickness, CHUNK_SIZE*1.2, accentColor(rng)));
+    }
+  }
+}
+
+function generateChunkBoxes(cx, cz, salt, isSpawn){
+  const rng = mulberry32(hashSeed(cx,cz,salt));
+  const ox = cx*CHUNK_SIZE, oz = cz*CHUNK_SIZE;
+  const boxes = [];
+  boxes.push(box(ox+CHUNK_SIZE/2, -0.5, oz+CHUNK_SIZE/2, CHUNK_SIZE, 1, CHUNK_SIZE, groundColor(rng)));
+
+  if(isSpawn){
+    // ponto de partida: ainda denso e sujo, mas um pouco mais respirável
+    genBuildings(boxes, ox, oz, rng, 2);
+    if(rng()<0.6) genPillarfield(boxes, ox, oz, rng);
+    genClutterAndPiercers(boxes, ox, oz, rng, 6);
+    return boxes;
+  }
+
+  // caos: várias camadas empilhadas e sobrepostas no mesmo chunk
+  genBuildings(boxes, ox, oz, rng, 4);
+  if(rng()<0.6) genPillarfield(boxes, ox, oz, rng);
+  if(rng()<0.5) genWall(boxes, ox, oz, rng);
+  if(rng()<0.45) genTunnel(boxes, ox, oz, rng);
+  if(rng()<0.7) genBridge(boxes, ox, oz, rng);
+  if(rng()<0.75){ genBridge(boxes, ox, oz, rng); } // segundo viaduto cruzado, quase sempre
+  if(rng()<0.18) genMegastructure(boxes, ox, oz, rng);
+  genClutterAndPiercers(boxes, ox, oz, rng, 8 + Math.floor(rng()*14));
+
+  return boxes;
+}
+
+/* ---------------- MESH BUILDING (merged per chunk) ---------------- */
+function buildChunkMesh(boxes){
+  const n = boxes.length;
+  const positions = new Float32Array(n*VERTS_PER_BOX*3);
+  const normals   = new Float32Array(n*VERTS_PER_BOX*3);
+  const colors    = new Float32Array(n*VERTS_PER_BOX*3);
+  let vOff = 0;
+  for(let bi=0; bi<n; bi++){
+    const b = boxes[bi];
+    for(let i=0;i<VERTS_PER_BOX;i++){
+      const lx = BASE_POS[i*3], ly = BASE_POS[i*3+1], lz = BASE_POS[i*3+2];
+      const idx = (vOff+i)*3;
+      positions[idx]   = b.x + lx*b.w;
+      positions[idx+1] = b.y + ly*b.h;
+      positions[idx+2] = b.z + lz*b.d;
+      normals[idx]   = BASE_NORM[i*3];
+      normals[idx+1] = BASE_NORM[i*3+1];
+      normals[idx+2] = BASE_NORM[i*3+2];
+      colors[idx]   = b.color.r;
+      colors[idx+1] = b.color.g;
+      colors[idx+2] = b.color.b;
+    }
+    vOff += VERTS_PER_BOX;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(normals,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors:true, roughness:0.88, metalness:0.35,
+    transparent:true, opacity:0
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = true;
+  return mesh;
+}
+
+/* ---------------- CHUNK STREAMING SYSTEM ---------------- */
+const chunkGroup = new THREE.Group();
+scene.add(chunkGroup);
+
+const chunkMap = new Map();     // key -> {cx,cz,mesh,state,alpha,dist}
+const saltMap = new Map();      // key -> revisit salt (world mutates on revisit)
+const buildingSet = new Set();  // keys currently queued/building this tick
+
+function chunkKey(cx,cz){ return cx+','+cz; }
+
+function requestChunk(cx, cz){
+  const key = chunkKey(cx,cz);
+  if(chunkMap.has(key) || buildingSet.has(key)) return;
+  buildingSet.add(key);
+  const salt = saltMap.get(key) || 0;
+  const isSpawn = (cx===0 && cz===0);
+  const boxes = generateChunkBoxes(cx, cz, salt, isSpawn);
+  const mesh = buildChunkMesh(boxes);
+  chunkGroup.add(mesh);
+  chunkMap.set(key, {cx,cz,mesh,state:'in',alpha:0,scaleY:0.15});
+  buildingSet.delete(key);
+}
+
+function unloadChunk(key){
+  const c = chunkMap.get(key);
+  if(!c) return;
+  chunkGroup.remove(c.mesh);
+  c.mesh.geometry.dispose();
+  c.mesh.material.dispose();
+  chunkMap.delete(key);
+  saltMap.set(key, (saltMap.get(key)||0) + 1); // world mutates on next visit
+}
+
+let loadingComplete = false;
+
+function nearestMissingChunks(px, pz, radius, forwardX, forwardZ){
+  const rC = Math.ceil(radius/CHUNK_SIZE);
+  const pcx = Math.floor(px/CHUNK_SIZE), pcz = Math.floor(pz/CHUNK_SIZE);
+  const list = [];
+  for(let cx=pcx-rC; cx<=pcx+rC; cx++){
+    for(let cz=pcz-rC; cz<=pcz+rC; cz++){
+      const centerX = cx*CHUNK_SIZE+CHUNK_SIZE/2, centerZ = cz*CHUNK_SIZE+CHUNK_SIZE/2;
+      const dx = centerX-px, dz = centerZ-pz;
+      const dist = Math.hypot(dx,dz);
+      if(dist>radius) continue;
+      const key = chunkKey(cx,cz);
+      if(chunkMap.has(key) || buildingSet.has(key)) continue;
+      let score = dist;
+      if(forwardX!==undefined && dist>0.01){
+        const dot = (dx/dist)*forwardX + (dz/dist)*forwardZ;
+        score -= dot*40; // prioritize what's ahead of the player
+      }
+      list.push({cx,cz,score});
+    }
+  }
+  list.sort((a,b)=>a.score-b.score);
+  return list;
+}
+
+function updateStreaming(px, pz, forwardX, forwardZ, budget){
+  const candidates = nearestMissingChunks(px, pz, ACTIVE_RADIUS, forwardX, forwardZ);
+  for(let i=0;i<Math.min(budget, candidates.length); i++){
+    requestChunk(candidates[i].cx, candidates[i].cz);
+  }
+  // mark far chunks for unload
+  for(const [key,c] of chunkMap){
+    const centerX = c.cx*CHUNK_SIZE+CHUNK_SIZE/2, centerZ = c.cz*CHUNK_SIZE+CHUNK_SIZE/2;
+    const dist = Math.hypot(centerX-px, centerZ-pz);
+    if(dist>UNLOAD_RADIUS && c.state!=='out'){
+      c.state='out';
+    } else if(dist<=ACTIVE_RADIUS && c.state==='out'){
+      c.state='in'; // player turned back before it fully unloaded
+    }
+  }
+}
+
+function animateChunks(dt){
+  for(const [key,c] of chunkMap){
+    if(c.state==='in'){
+      c.alpha = Math.min(1, c.alpha + dt/FADE_TIME);
+      c.mesh.scale.y = 0.15 + 0.85*c.alpha;
+      c.mesh.material.opacity = c.alpha;
+      if(c.alpha>=1) c.state='active';
+    } else if(c.state==='out'){
+      c.alpha = Math.max(0, c.alpha - dt/FADE_TIME);
+      c.mesh.scale.y = 0.15 + 0.85*c.alpha;
+      c.mesh.material.opacity = c.alpha;
+      if(c.alpha<=0) unloadChunk(key);
+    }
+  }
+}
+
+/* ---------------- PLAYER STATE ---------------- */
+const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 0) };
+let yaw = 0, pitch = 0;
+let velocityY = 0;
+let grounded = true;
+let running = false;
+let wantsJump = false;
+let flying = false;
+
+const raycaster = new THREE.Raycaster();
+const _fwd = new THREE.Vector3(), _right = new THREE.Vector3();
+const _flyDir = new THREE.Vector3(), _flyEuler = new THREE.Euler();
+const _moveVec = new THREE.Vector3(), _originVec = new THREE.Vector3();
+
+function setFlying(value){
+  flying = value;
+  if(flying){ velocityY = 0; grounded = false; }
+  else { velocityY = 0; } // recomeça a cair naturalmente a partir de v=0, sem "tranco"
+  updateFlyUI();
+}
+
+/* Modo de câmera livre: voa para qualquer direção para onde o jogador está
+   olhando (inclui o pitch), mas continua respeitando colisão via raycast. */
+function updateFlight(dt, inForward, inStrafe, ascend, descend){
+  _flyEuler.set(pitch, yaw, 0, 'YXZ');
+  _flyDir.set(0,0,-1).applyEuler(_flyEuler); // direção 3D completa do olhar
+  _right.set(Math.cos(yaw), 0, -Math.sin(yaw)); // strafe permanece horizontal
+
+  let mx = _flyDir.x*inForward + _right.x*inStrafe;
+  let my = _flyDir.y*inForward;
+  let mz = _flyDir.z*inForward + _right.z*inStrafe;
+  if(ascend) my += 1;
+  if(descend) my -= 1;
+
+  const len = Math.hypot(mx,my,mz);
+  if(len > 1e-6){ mx/=len; my/=len; mz/=len; } else { mx=0; my=0; mz=0; }
+
+  let dx = mx*FLY_SPEED*dt, dy = my*FLY_SPEED*dt, dz = mz*FLY_SPEED*dt;
+  const moveDist = Math.hypot(dx,dy,dz);
+
+  if(moveDist > 1e-6){
+    _moveVec.set(dx,dy,dz).normalize();
+    _originVec.copy(player.position);
+    raycaster.set(_originVec, _moveVec);
+    raycaster.far = PLAYER_RADIUS + moveDist + 0.05;
+    const hits = raycaster.intersectObjects(chunkGroup.children, false);
+    if(hits.length>0){
+      const allowed = Math.max(0, hits[0].distance - PLAYER_RADIUS - 0.02);
+      if(allowed < moveDist){
+        const scale = moveDist>0 ? allowed/moveDist : 0;
+        dx*=scale; dy*=scale; dz*=scale;
+      }
+    }
+  }
+
+  player.position.x += dx;
+  player.position.y += dy;
+  player.position.z += dz;
+
+  if(player.position.y < -80){ // segurança: nunca perder o jogador
+    player.position.set(0, EYE_HEIGHT+2, 0);
+  }
+
+  camera.position.copy(player.position);
+  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+}
+
+function updatePhysics(dt, inForward, inStrafe){
+  const speed = WALK_SPEED * (running ? RUN_MULT : 1);
+  _fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+  _right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+
+  let mx = _fwd.x*inForward + _right.x*inStrafe;
+  let mz = _fwd.z*inForward + _right.z*inStrafe;
+  const len = Math.hypot(mx,mz);
+  if(len>1){ mx/=len; mz/=len; }
+
+  let dx = mx*speed*dt;
+  let dz = mz*speed*dt;
+  const rayY = (player.position.y - EYE_HEIGHT) + 0.9;
+
+  if(Math.abs(dx) > 1e-6){
+    raycaster.set(new THREE.Vector3(player.position.x, rayY, player.position.z), new THREE.Vector3(Math.sign(dx),0,0));
+    raycaster.far = PLAYER_RADIUS + Math.abs(dx) + 0.05;
+    const hits = raycaster.intersectObjects(chunkGroup.children, false);
+    if(hits.length>0){
+      const allowed = Math.max(0, hits[0].distance - PLAYER_RADIUS - 0.02);
+      dx = Math.sign(dx)*Math.min(Math.abs(dx), allowed);
+    }
+  }
+  player.position.x += dx;
+
+  if(Math.abs(dz) > 1e-6){
+    raycaster.set(new THREE.Vector3(player.position.x, rayY, player.position.z), new THREE.Vector3(0,0,Math.sign(dz)));
+    raycaster.far = PLAYER_RADIUS + Math.abs(dz) + 0.05;
+    const hits = raycaster.intersectObjects(chunkGroup.children, false);
+    if(hits.length>0){
+      const allowed = Math.max(0, hits[0].distance - PLAYER_RADIUS - 0.02);
+      dz = Math.sign(dz)*Math.min(Math.abs(dz), allowed);
+    }
+  }
+  player.position.z += dz;
+
+  velocityY += GRAVITY*dt;
+  if(wantsJump && grounded){ velocityY = JUMP_SPEED; grounded = false; }
+  wantsJump = false;
+  player.position.y += velocityY*dt;
+
+  const downOrigin = new THREE.Vector3(player.position.x, (player.position.y-EYE_HEIGHT)+1.2, player.position.z);
+  raycaster.set(downOrigin, new THREE.Vector3(0,-1,0));
+  raycaster.far = 6;
+  const groundHits = raycaster.intersectObjects(chunkGroup.children, false);
+  if(groundHits.length>0){
+    const groundY = groundHits[0].point.y;
+    const currentFeet = player.position.y - EYE_HEIGHT;
+    if(currentFeet <= groundY + 0.2 && velocityY<=0){
+      player.position.y = groundY + EYE_HEIGHT;
+      velocityY = 0;
+      grounded = true;
+    } else if (currentFeet > groundY + 0.2) {
+      grounded = false;
+    }
+  } else {
+    grounded = false;
+    if(player.position.y < -80){ // safety respawn
+      player.position.set(0, EYE_HEIGHT+2, 0);
+      velocityY = 0;
+    }
+  }
+
+  camera.position.copy(player.position);
+  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+}
+
+/* ---------------- INPUT: PC ---------------- */
+let mode = null; // 'pc' | 'mobile'
+const keys = {};
+let pointerLocked = false;
+
+window.addEventListener('keydown', (e)=>{
+  keys[e.code] = true;
+  if(e.code==='Space'){ if(!flying) wantsJump = true; e.preventDefault(); }
+  if(e.code==='KeyQ'){ running = true; }
+  if(e.code==='KeyE' && !e.repeat){ setFlying(!flying); }
+});
+window.addEventListener('keyup', (e)=>{
+  keys[e.code] = false;
+  if(e.code==='KeyQ'){ running = false; }
+});
+
+canvas.addEventListener('click', ()=>{
+  if(mode==='pc' && !pointerLocked){ canvas.requestPointerLock(); }
+});
+document.addEventListener('pointerlockchange', ()=>{
+  pointerLocked = (document.pointerLockElement === canvas);
+});
+document.addEventListener('mousemove', (e)=>{
+  if(mode!=='pc' || !pointerLocked) return;
+  yaw -= e.movementX * 0.0022;
+  pitch -= e.movementY * 0.0022;
+  pitch = Math.max(-Math.PI/2+0.02, Math.min(Math.PI/2-0.02, pitch));
+});
+
+function pcInputVector(){
+  let f=0, s=0;
+  if(keys['KeyW']) f+=1;
+  if(keys['KeyS']) f-=1;
+  if(keys['KeyD']) s+=1;
+  if(keys['KeyA']) s-=1;
+  return {f,s};
+}
+
+/* ---------------- INPUT: MOBILE ---------------- */
+const joystickZone = document.getElementById('joystickZone');
+const joystickKnob = document.getElementById('joystickKnob');
+const camLookZone = document.getElementById('camLookZone');
+const btnJump = document.getElementById('btnJump');
+const btnRun = document.getElementById('btnRun');
+const btnFly = document.getElementById('btnFly');
+let flyUpHeld = false, flyDownHeld = false;
+
+let joyActive = false, joyId = null, joyVec = {x:0,y:0};
+let lookId = null, lookLast = {x:0,y:0};
+
+function joyCenter(){
+  const r = joystickZone.getBoundingClientRect();
+  return {x:r.left+r.width/2, y:r.top+r.height/2, radius:r.width/2};
+}
+
+joystickZone.addEventListener('touchstart', (e)=>{
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  joyActive = true; joyId = t.identifier;
+  updateJoystick(t);
+}, {passive:false});
+joystickZone.addEventListener('touchmove', (e)=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){ if(t.identifier===joyId) updateJoystick(t); }
+}, {passive:false});
+function endJoy(e){
+  for(const t of e.changedTouches){
+    if(t.identifier===joyId){
+      joyActive=false; joyId=null; joyVec={x:0,y:0};
+      joystickKnob.style.left='35px'; joystickKnob.style.top='35px';
+    }
+  }
+}
+joystickZone.addEventListener('touchend', endJoy);
+joystickZone.addEventListener('touchcancel', endJoy);
+
+function updateJoystick(t){
+  const c = joyCenter();
+  let dx = t.clientX-c.x, dy = t.clientY-c.y;
+  const dist = Math.hypot(dx,dy);
+  const max = c.radius;
+  if(dist>max){ dx = dx/dist*max; dy = dy/dist*max; }
+  joyVec.x = dx/max; joyVec.y = dy/max;
+  joystickKnob.style.left = (35+dx)+'px';
+  joystickKnob.style.top = (35+dy)+'px';
+}
+
+camLookZone.addEventListener('touchstart', (e)=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===joyId) continue;
+    if(lookId===null){ lookId=t.identifier; lookLast={x:t.clientX,y:t.clientY}; }
+  }
+}, {passive:true});
+camLookZone.addEventListener('touchmove', (e)=>{
+  for(const t of e.changedTouches){
+    if(t.identifier!==lookId) continue;
+    const dx = t.clientX-lookLast.x, dy = t.clientY-lookLast.y;
+    lookLast = {x:t.clientX,y:t.clientY};
+    yaw -= dx*0.0042;
+    pitch -= dy*0.0042;
+    pitch = Math.max(-Math.PI/2+0.02, Math.min(Math.PI/2-0.02, pitch));
+  }
+}, {passive:true});
+function endLook(e){
+  for(const t of e.changedTouches){ if(t.identifier===lookId) lookId=null; }
+}
+camLookZone.addEventListener('touchend', endLook);
+camLookZone.addEventListener('touchcancel', endLook);
+
+// PULAR/CORRER viram SUBIR/DESCER (segurar) enquanto o modo voo estiver ativo
+btnJump.addEventListener('touchstart', (e)=>{
+  e.preventDefault();
+  if(flying){ flyUpHeld = true; } else { wantsJump = true; }
+}, {passive:false});
+btnJump.addEventListener('touchend', (e)=>{ e.preventDefault(); flyUpHeld = false; }, {passive:false});
+btnJump.addEventListener('touchcancel', (e)=>{ flyUpHeld = false; });
+
+btnRun.addEventListener('touchstart', (e)=>{
+  e.preventDefault();
+  if(flying){ flyDownHeld = true; }
+  else { running = !running; btnRun.classList.toggle('active', running); }
+}, {passive:false});
+btnRun.addEventListener('touchend', (e)=>{ e.preventDefault(); if(flying) flyDownHeld = false; }, {passive:false});
+btnRun.addEventListener('touchcancel', (e)=>{ flyDownHeld = false; });
+
+btnFly.addEventListener('touchstart', (e)=>{
+  e.preventDefault();
+  setFlying(!flying);
+}, {passive:false});
+
+function mobileInputVector(){
+  return { f: -joyVec.y, s: joyVec.x };
+}
+
+function updateFlyUI(){
+  if(btnFly) btnFly.classList.toggle('active', flying);
+  if(btnJump) btnJump.textContent = flying ? 'SUBIR' : 'PULAR';
+  if(btnRun){
+    btnRun.textContent = flying ? 'DESCER' : 'CORRER';
+    if(flying) btnRun.classList.remove('active');
+    else btnRun.classList.toggle('active', running);
+  }
+  if(pcHint){
+    pcHint.textContent = flying
+      ? 'WASD mover · ESPAÇO subir · SHIFT descer · E parar de voar · MOUSE olhar'
+      : 'WASD mover · ESPAÇO pular · Q correr · E voar · MOUSE olhar (clique para travar o cursor)';
+  }
+}
+
+/* ---------------- START / LOADING FLOW ---------------- */
+const startScreen = document.getElementById('startScreen');
+const loadingScreen = document.getElementById('loadingScreen');
+const loadingLabel = document.getElementById('loadingLabel');
+const loadingBarInner = document.getElementById('loadingBarInner');
+const hud = document.getElementById('hud');
+const crosshair = document.getElementById('crosshair');
+const pcHint = document.getElementById('pcHint');
+const mobileControls = document.getElementById('mobileControls');
+
+function neededInitialChunkCount(){
+  const rC = Math.ceil(INITIAL_RADIUS/CHUNK_SIZE);
+  let n=0;
+  for(let cx=-rC; cx<=rC; cx++){
+    for(let cz=-rC; cz<=rC; cz++){
+      const d = Math.hypot(cx*CHUNK_SIZE+CHUNK_SIZE/2, cz*CHUNK_SIZE+CHUNK_SIZE/2);
+      if(d<=INITIAL_RADIUS) n++;
+    }
+  }
+  return n;
+}
+const NEEDED_INITIAL = neededInitialChunkCount();
+
+function initialLoadStep(){
+  const list = nearestMissingChunks(0,0, INITIAL_RADIUS, 0, -1);
+  const batch = Math.min(8, list.length);
+  for(let i=0;i<batch;i++) requestChunk(list[i].cx, list[i].cz);
+  const loadedInRange = [...chunkMap.values()].filter(c=>{
+    const d = Math.hypot(c.cx*CHUNK_SIZE+CHUNK_SIZE/2, c.cz*CHUNK_SIZE+CHUNK_SIZE/2);
+    return d<=INITIAL_RADIUS;
+  }).length;
+  const pct = Math.min(100, Math.round((loadedInRange/NEEDED_INITIAL)*100));
+  loadingBarInner.style.width = pct+'%';
+  loadingLabel.textContent = 'CARREGANDO '+pct+'%';
+  // fast-forward the fade-in so the starting view is fully solid
+  for(const c of chunkMap.values()){ c.alpha=1; c.mesh.material.opacity=1; c.mesh.scale.y=1; c.state='active'; }
+  if(loadedInRange >= NEEDED_INITIAL){
+    loadingComplete = true;
+    loadingScreen.style.display='none';
+    hud.style.display='block';
+    if(mode==='pc'){ crosshair.style.display='block'; pcHint.style.display='block'; }
+    if(mode==='mobile'){ mobileControls.style.display='block'; }
+    gameStartTime = performance.now();
+  }
+}
+
+let gameStartTime = null;
+
+function beginGame(selectedMode){
+  mode = selectedMode;
+  startScreen.style.display='none';
+  loadingScreen.style.display='flex';
+  loadingLabel.textContent='CARREGANDO 0%';
+  loadingBarInner.style.width='0%';
+  player.position.set(0, EYE_HEIGHT, 0);
+  yaw = 0; pitch = 0;
+  camera.position.copy(player.position);
+  animate();
+}
+
+document.getElementById('btnPC').addEventListener('click', ()=>beginGame('pc'));
+document.getElementById('btnMobile').addEventListener('click', ()=>beginGame('mobile'));
+
+/* ---------------- HUD ---------------- */
+const hudTime = document.getElementById('hudTime');
+const hudPos = document.getElementById('hudPos');
+function formatTime(ms){
+  const s = Math.floor(ms/1000);
+  const hh = String(Math.floor(s/3600)).padStart(2,'0');
+  const mm = String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  return hh+':'+mm+':'+ss;
+}
+
+/* ---------------- MAIN LOOP ---------------- */
+const clock = new THREE.Clock();
+let started = false;
+
+function animate(){
+  if(!started){ started = true; clock.start(); }
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.06);
+
+  if(!loadingComplete){
+    initialLoadStep();
+    renderer.render(scene, camera);
+    return;
+  }
+
+  const inVec = mode==='pc' ? pcInputVector() : mobileInputVector();
+  if(flying){
+    const ascend = mode==='pc' ? !!keys['Space'] : flyUpHeld;
+    const descend = mode==='pc' ? !!(keys['ShiftLeft']||keys['ShiftRight']||keys['ControlLeft']) : flyDownHeld;
+    updateFlight(dt, inVec.f, inVec.s, ascend, descend);
+  } else {
+    updatePhysics(dt, inVec.f, inVec.s);
+  }
+
+  _fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));
+  updateStreaming(player.position.x, player.position.z, _fwd.x, _fwd.z, 2);
+  animateChunks(dt);
+
+  const elapsed = performance.now() - gameStartTime;
+  hudTime.textContent = formatTime(elapsed);
+  hudPos.textContent = player.position.x.toFixed(1)+', '+(player.position.y-EYE_HEIGHT).toFixed(1)+', '+player.position.z.toFixed(1);
+
+  renderer.render(scene, camera);
+}
+
+})();
+</script>
+</body>
+</html>
