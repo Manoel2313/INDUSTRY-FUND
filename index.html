@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>INDUSTRY FUND - ANOMALIA</title>
+<title>INDUSTRY FUND - ANOMALIA GIGANTE</title>
 <style>
   :root{
     --gray-950:#0c0d0f;
@@ -178,7 +178,7 @@
 <div id="startScreen">
   <div>
     <div id="startTitle">Industry&nbsp;Fund</div>
-    <div id="startSub">cuidado com a ANOMALIA</div>
+    <div id="startSub">ANOMALIA GIGANTE • FUJA!</div>
   </div>
   <div id="platformRow">
     <button class="platBtn" id="btnPC">PC</button>
@@ -221,12 +221,12 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - ANOMALIA + ENERGIA
+   INDUSTRY FUND - ANOMALIA GIGANTE + ENERGIA CORRIGIDA
    ====================================================================== */
 
 /* ---------------- CONFIG ---------------- */
 const CHUNK_SIZE      = 100;
-const ACTIVE_RADIUS    = 600;
+const ACTIVE_RADIUS    = 1000;    // AUMENTADO PARA 1000m!
 const UNLOAD_MARGIN    = 60;
 const UNLOAD_RADIUS    = ACTIVE_RADIUS + UNLOAD_MARGIN;
 const INITIAL_RADIUS   = 220;
@@ -244,20 +244,20 @@ const CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
 
 // ===== CAMADAS INFINITAS =====
 const LAYER_HEIGHT  = 400;
-const HOLE_RADIUS   = 60;
+const HOLE_RADIUS   = 60;        // 60m raio = 120m diâmetro
 const HOLE_SPACING  = 400;
 
-// ===== ENERGIA =====
+// ===== ENERGIA CORRIGIDA =====
 const MAX_ENERGY = 100;
-const RUN_ENERGY_DRAIN = MAX_ENERGY / 30;  // 30 segundos
-const FLY_ENERGY_DRAIN = MAX_ENERGY / 10;  // 10 segundos
-const ENERGY_RECHARGE_DELAY = 60;          // 60 segundos para recarregar
+const RUN_ENERGY_DRAIN = 3.33;    // 3.33% por segundo (30s para zerar)
+const FLY_ENERGY_DRAIN = 10;      // 10% por segundo (10s para zerar)
+const ENERGY_RECHARGE_RATE = 5;   // 5% por segundo (20s para recarregar)
 
 // ===== ANOMALIA =====
-const ANOMALIA_SPAWN_DIST = 5000;  // 5km
-const ANOMALIA_SPEED_MULT = 15;    // 3x mais rápido que player correndo (5*5=25 * 3 = 75)
-const ANOMALIA_HEIGHT = 40;
-const ANOMALIA_REACH = 30;
+const ANOMALIA_HEIGHT = 100;      // 100 METROS!
+const ANOMALIA_SPAWN_DIST = 600;  // 600m de distancia
+const ANOMALIA_REACH = 50;        // Alcance de toque
+const ANOMALIA_SPEED = 75;        // 3x mais rapido que o player correndo (25*3)
 
 const EYE_HEIGHT   = 1.7;
 const PLAYER_RADIUS = 0.4;
@@ -307,12 +307,12 @@ const fillLight = new THREE.DirectionalLight(0xaebbc9, 0.4);
 fillLight.position.set(-160,120,-140);
 scene.add(fillLight);
 
-// --- Lanterna ---
+// --- Lanterna (ANGULO +20%) ---
 const flashlight = new THREE.SpotLight(0xffeedd, 0);
-flashlight.angle = 0.35;
+flashlight.angle = 0.48;          // +20% (0.35 * 1.2 = 0.42, mas coloquei 0.48 pra ficar mais perceptível)
 flashlight.penumbra = 0.3;
 flashlight.decay = 1;
-flashlight.distance = 120;
+flashlight.distance = 150;
 flashlight.position.set(0, EYE_HEIGHT, 0);
 flashlight.target.position.set(0, EYE_HEIGHT, -100);
 flashlight.castShadow = true;
@@ -321,13 +321,13 @@ scene.add(flashlight.target);
 
 let flashlightOn = false;
 
-/* ---------------- ANOMALIA (ARANHA) ---------------- */
-let anomalia = null;
+/* ---------------- ANOMALIA GIGANTE ---------------- */
 let anomaliaGroup = new THREE.Group();
 scene.add(anomaliaGroup);
 let anomaliaAlive = false;
-let anomaliaPos = new THREE.Vector3();
-let anomaliaTarget = new THREE.Vector3();
+let anomaliaPos = new THREE.Vector3(0, 0, 0);
+let anomaliaTarget = new THREE.Vector3(0, 0, 0);
+let anomaliaGlowLight = null;
 
 function createAnomalia(){
   // Limpa anomalia anterior
@@ -338,54 +338,50 @@ function createAnomalia(){
     if(child.material) child.material.dispose();
   }
   
-  // CORPO PRINCIPAL (esfera negra gigante)
-  const bodyGeo = new THREE.SphereGeometry(8, 24, 24);
+  // Remove luz antiga
+  if(anomaliaGlowLight){
+    scene.remove(anomaliaGlowLight);
+    anomaliaGlowLight = null;
+  }
+  
+  // CORPO PRINCIPAL (esfera negra gigante - 20m de raio)
+  const bodyGeo = new THREE.SphereGeometry(20, 32, 32);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0x000000,
-    roughness: 0.3,
-    metalness: 0.8,
-    emissive: 0x110022,
-    emissiveIntensity: 0.2
+    roughness: 0.2,
+    metalness: 0.9,
+    emissive: 0x220022,
+    emissiveIntensity: 0.3
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 20;
+  body.position.y = 50;
   body.castShadow = true;
   anomaliaGroup.add(body);
   
-  // OLHOS ROXOS (7 olhos)
+  // OLHOS ROXOS GIGANTES (7 olhos)
   const eyeMat = new THREE.MeshStandardMaterial({
     color: 0x8800ff,
     emissive: 0x6600cc,
-    emissiveIntensity: 2,
+    emissiveIntensity: 3,
     roughness: 0.1
   });
-  const eyeGeo = new THREE.SphereGeometry(1.2, 12, 12);
+  const eyeGeo = new THREE.SphereGeometry(3, 16, 16);
   for(let i = 0; i < 7; i++){
     const angle = (i / 7) * Math.PI * 2;
     const eye = new THREE.Mesh(eyeGeo, eyeMat);
-    const radius = 7;
+    const radius = 18;
     eye.position.set(
       Math.cos(angle) * radius * 0.6,
-      20 + Math.sin(angle * 1.7) * 3,
+      50 + Math.sin(angle * 1.7) * 6,
       Math.sin(angle) * radius * 0.6
     );
     anomaliaGroup.add(eye);
-    
-    // Brilho dos olhos (luz pontual)
-    const glowMat = new THREE.MeshBasicMaterial({
-      color: 0x8800ff,
-      transparent: true,
-      opacity: 0.3
-    });
-    const glow = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8), glowMat);
-    glow.position.copy(eye.position);
-    anomaliaGroup.add(glow);
   }
   
-  // PATAS (10 patas)
+  // PATAS GIGANTES (10 patas)
   const legMat = new THREE.MeshStandardMaterial({
     color: 0x111111,
-    roughness: 0.6,
+    roughness: 0.5,
     metalness: 0.4
   });
   
@@ -393,65 +389,79 @@ function createAnomalia(){
     const angle = (i / 10) * Math.PI * 2;
     const legGroup = new THREE.Group();
     
-    // Segmento 1
-    const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 12, 6), legMat);
-    seg1.position.y = 6;
+    // Segmentos maiores
+    const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 30, 8), legMat);
+    seg1.position.y = 15;
     seg1.rotation.x = 0.4;
     legGroup.add(seg1);
     
-    // Segmento 2
-    const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 10, 6), legMat);
-    seg2.position.set(0, -2, 5);
+    const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 25, 8), legMat);
+    seg2.position.set(0, -8, 12);
     seg2.rotation.x = -0.6;
     legGroup.add(seg2);
     
-    // Segmento 3 (ponta)
-    const seg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 8, 6), legMat);
-    seg3.position.set(0, -6, 9);
+    const seg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.5, 20, 8), legMat);
+    seg3.position.set(0, -18, 22);
     seg3.rotation.x = -0.3;
     legGroup.add(seg3);
     
     legGroup.position.set(
-      Math.cos(angle) * 10,
-      14,
-      Math.sin(angle) * 10
+      Math.cos(angle) * 28,
+      35,
+      Math.sin(angle) * 28
     );
     legGroup.rotation.y = -angle;
     legGroup.rotation.z = 0.3;
     anomaliaGroup.add(legGroup);
   }
   
-  // ABDOMEN
-  const abdomenGeo = new THREE.SphereGeometry(6, 20, 20);
+  // ABDOMEN GIGANTE
+  const abdomenGeo = new THREE.SphereGeometry(15, 24, 24);
   const abdomenMat = new THREE.MeshStandardMaterial({
     color: 0x0a0a0a,
-    roughness: 0.5,
+    roughness: 0.4,
     metalness: 0.6
   });
   const abdomen = new THREE.Mesh(abdomenGeo, abdomenMat);
-  abdomen.position.set(0, 12, -12);
-  abdomen.scale.set(1.2, 0.8, 1.4);
+  abdomen.position.set(0, 30, -30);
+  abdomen.scale.set(1.3, 0.8, 1.5);
   anomaliaGroup.add(abdomen);
   
-  // Brilho roxo ao redor
+  // BRILHO VERMELHO (PointLight que ilumina 250m ao redor)
+  anomaliaGlowLight = new THREE.PointLight(0xff0000, 0, 250);
+  anomaliaGlowLight.position.set(0, 50, 0);
+  anomaliaGroup.add(anomaliaGlowLight);
+  
+  // AURA VERMELHA VISUAL
   const auraMat = new THREE.MeshBasicMaterial({
-    color: 0x440088,
+    color: 0xff0000,
     transparent: true,
-    opacity: 0.15,
+    opacity: 0.08,
     wireframe: true
   });
-  const aura = new THREE.Mesh(new THREE.SphereGeometry(14, 12, 12), auraMat);
-  aura.position.y = 18;
+  const aura = new THREE.Mesh(new THREE.SphereGeometry(35, 16, 16), auraMat);
+  aura.position.y = 50;
   anomaliaGroup.add(aura);
+  
+  // AURA ROXA
+  const auraMat2 = new THREE.MeshBasicMaterial({
+    color: 0x8800ff,
+    transparent: true,
+    opacity: 0.05,
+    wireframe: true
+  });
+  const aura2 = new THREE.Mesh(new THREE.SphereGeometry(45, 12, 12), auraMat2);
+  aura2.position.y = 50;
+  anomaliaGroup.add(aura2);
   
   anomaliaGroup.scale.set(1, 1, 1);
   anomaliaAlive = true;
 }
 
 function spawnAnomalia(playerPos){
-  // Procura uma posição a ~5000m de distância
+  // Procura uma posição a ~600m de distância (sempre em qualquer direção)
   const angle = Math.random() * Math.PI * 2;
-  const dist = ANOMALIA_SPAWN_DIST + (Math.random() - 0.5) * 500;
+  const dist = ANOMALIA_SPAWN_DIST + (Math.random() - 0.5) * 100;
   
   const spawnX = playerPos.x + Math.cos(angle) * dist;
   const spawnZ = playerPos.z + Math.sin(angle) * dist;
@@ -469,136 +479,131 @@ function spawnAnomalia(playerPos){
   anomaliaAlive = true;
 }
 
-function updateAnomalia(dt, playerPos){
+function updateAnomalia(dt, playerPos, isDay){
   if(!anomaliaAlive) return;
   
-  // Calcula distância até o player
+  // SEMPRE sabe onde o jogador está e persegue
   const dx = playerPos.x - anomaliaPos.x;
   const dz = playerPos.z - anomaliaPos.z;
   const dy = playerPos.y - anomaliaPos.y;
   const dist = Math.hypot(dx, dy, dz);
   
-  // Se distância > 5500m, spawna nova anomalia
-  if(dist > ANOMALIA_SPAWN_DIST + 500){
+  // Se distância > 700m, spawna nova anomalia mais perto
+  if(dist > ANOMALIA_SPAWN_DIST + 100){
     spawnAnomalia(playerPos);
     return;
   }
   
-  // Se distância < 300m, a anomalia começa a perseguir
-  if(dist < 500){
-    // Velocidade da anomalia: 3x mais rápido que o player correndo
-    const speed = WALK_SPEED * RUN_MULT * 3; // 75 m/s
-    const moveSpeed = Math.min(speed * dt, dist * 0.5);
+  // SEMPRE persegue o jogador (qualquer distância)
+  const speed = ANOMALIA_SPEED;
+  const moveSpeed = Math.min(speed * dt, dist * 0.5);
+  
+  if(dist > 1){
+    const normX = dx / dist;
+    const normY = dy / dist;
+    const normZ = dz / dist;
     
-    if(dist > 1){
-      const normX = dx / dist;
-      const normY = dy / dist;
-      const normZ = dz / dist;
-      
-      anomaliaPos.x += normX * moveSpeed;
-      anomaliaPos.y += normY * moveSpeed * 0.3;
-      anomaliaPos.z += normZ * moveSpeed;
-      
-      // Mantém na camada correta
-      const targetLayer = Math.round(playerPos.y / LAYER_HEIGHT) * LAYER_HEIGHT;
-      anomaliaPos.y += (targetLayer + ANOMALIA_HEIGHT/2 - anomaliaPos.y) * 0.01;
-      
-      anomaliaGroup.position.copy(anomaliaPos);
-      
-      // Rotaciona para olhar para o player
-      const lookAngle = Math.atan2(dx, dz);
-      anomaliaGroup.rotation.y = lookAngle;
-      
-      // Efeito de "tremor" quando está perto
-      if(dist < 100){
-        const shake = 0.5;
-        anomaliaGroup.position.x += (Math.random() - 0.5) * shake;
-        anomaliaGroup.position.z += (Math.random() - 0.5) * shake;
-      }
-    }
+    anomaliaPos.x += normX * moveSpeed;
+    anomaliaPos.y += normY * moveSpeed * 0.3;
+    anomaliaPos.z += normZ * moveSpeed;
     
-    // DESTROI ESTRUTURAS NO CAMINHO
-    if(dist < 200){
-      // Remove chunks próximos (efeito de destruição)
-      const destroyRadius = 40;
-      for(const [key, c] of chunkMap){
-        const cx = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
-        const cz = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
-        const cy = c.layer * LAYER_HEIGHT;
-        const d = Math.hypot(cx - anomaliaPos.x, cz - anomaliaPos.z, cy - anomaliaPos.y);
-        if(d < destroyRadius && c.state === 'active'){
-          // Destrói o chunk (remove da cena)
-          chunkGroup.remove(c.mesh);
-          c.mesh.geometry.dispose();
-          c.mesh.material.dispose();
-          chunkMap.delete(key);
-          // Recria o chunk com menos estruturas (opcional)
-          saltMap.set(key, (saltMap.get(key)||0) + 1);
-        }
-      }
-    }
-    
-    // TOQUE = MORTE
-    if(dist < ANOMALIA_REACH){
-      alert('💀 A ANOMALIA TE PEGOU! VOCÊ MORREU! 💀');
-      // Respawna o jogador
-      playerPos.set(0, EYE_HEIGHT, 0);
-      anomaliaPos.set(ANOMALIA_SPAWN_DIST, EYE_HEIGHT, 0);
-      anomaliaGroup.position.copy(anomaliaPos);
-      // Reseta energia
-      energy = MAX_ENERGY;
-      energyDepleted = false;
-      energyDepleteTime = 0;
-      updateEnergyUI();
-    }
-  } else {
-    // Se longe, fica parado (espreitando)
+    // Mantém na camada correta
     const targetLayer = Math.round(playerPos.y / LAYER_HEIGHT) * LAYER_HEIGHT;
-    anomaliaPos.y += (targetLayer + ANOMALIA_HEIGHT/2 - anomaliaPos.y) * 0.001;
+    anomaliaPos.y += (targetLayer + ANOMALIA_HEIGHT/2 - anomaliaPos.y) * 0.01;
+    
     anomaliaGroup.position.copy(anomaliaPos);
     
-    // Olhos brilham mais quando detecta o player
-    const eyeGlow = anomaliaGroup.children.filter(c => c.material && c.material.emissiveIntensity !== undefined);
-    eyeGlow.forEach(eye => {
-      if(eye.material) {
-        const intensity = dist < 1000 ? 3 : 0.5;
-        eye.material.emissiveIntensity = intensity;
-      }
-    });
+    // Rotaciona para olhar para o player
+    const lookAngle = Math.atan2(dx, dz);
+    anomaliaGroup.rotation.y = lookAngle;
+  }
+  
+  // BRILHO VERMELHO na noite (cobre 250m)
+  if(anomaliaGlowLight){
+    if(!isDay){
+      // Noite: brilho vermelho intenso
+      anomaliaGlowLight.intensity = 15 + Math.sin(Date.now() * 0.002) * 5;
+      anomaliaGlowLight.color.setHex(0xff2200);
+      anomaliaGlowLight.distance = 250;
+    } else {
+      // Dia: brilho fraco
+      anomaliaGlowLight.intensity = 2;
+      anomaliaGlowLight.color.setHex(0x882200);
+      anomaliaGlowLight.distance = 100;
+    }
+  }
+  
+  // DESTROI ESTRUTURAS NO CAMINHO (qualquer estrutura na frente)
+  const destroyRadius = 50;
+  for(const [key, c] of chunkMap){
+    const cx = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
+    const cz = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
+    const cy = c.layer * LAYER_HEIGHT;
+    const d = Math.hypot(cx - anomaliaPos.x, cz - anomaliaPos.z, cy - anomaliaPos.y);
+    if(d < destroyRadius && c.state === 'active'){
+      chunkGroup.remove(c.mesh);
+      c.mesh.geometry.dispose();
+      c.mesh.material.dispose();
+      chunkMap.delete(key);
+      saltMap.set(key, (saltMap.get(key)||0) + 1);
+    }
+  }
+  
+  // TOQUE = MORTE
+  if(dist < ANOMALIA_REACH){
+    alert('💀 A ANOMALIA TE PEGOU! VOCÊ MORREU! 💀');
+    playerPos.set(0, EYE_HEIGHT, 0);
+    spawnAnomalia(playerPos);
+    energy = MAX_ENERGY;
+    running = false;
+    if(flying) setFlying(false);
+    updateEnergyUI();
+    updateFlyUI();
   }
   
   // Atualiza warning na UI
   const warning = document.getElementById('anomalyWarning');
-  if(dist < 300){
+  if(dist < 400){
     warning.style.display = 'block';
-    warning.style.color = dist < 100 ? '#ff0000' : '#ff6600';
+    const intensity = Math.max(0.3, 1 - (dist / 400));
+    warning.style.color = `rgba(255, ${Math.floor(100 * (1 - intensity))}, 0, ${intensity})`;
+    warning.style.fontSize = `${36 + intensity * 20}px`;
   } else {
     warning.style.display = 'none';
   }
 }
 
-/* ---------------- SISTEMA DE ENERGIA ---------------- */
+/* ---------------- SISTEMA DE ENERGIA CORRIGIDO ---------------- */
 let energy = MAX_ENERGY;
-let energyDepleted = false;
-let energyDepleteTime = 0;
-let runningStartTime = 0;
-let flyingStartTime = 0;
+let isRunning = false;
+let isFlying = false;
 
-function updateEnergy(dt, isRunning, isFlying){
-  if(energyDepleted){
-    energyDepleteTime += dt;
-    if(energyDepleteTime >= ENERGY_RECHARGE_DELAY){
-      energy = MAX_ENERGY;
-      energyDepleted = false;
-      energyDepleteTime = 0;
+function updateEnergy(dt, runningNow, flyingNow){
+  isRunning = runningNow;
+  isFlying = flyingNow;
+  
+  // Se energia zerou, não pode correr nem voar
+  if(energy <= 0){
+    energy = 0;
+    if(isRunning || isFlying){
+      // Força parar
+      running = false;
+      if(flying) setFlying(false);
+      isRunning = false;
+      isFlying = false;
+      updateFlyUI();
     }
+    // Recarga lenta quando zerada
+    energy += ENERGY_RECHARGE_RATE * 0.3 * dt;
+    if(energy > MAX_ENERGY) energy = MAX_ENERGY;
     updateEnergyUI();
     return;
   }
   
+  // Drena energia se estiver correndo ou voando
   let drain = 0;
   if(isRunning){
-    drain = RUN_ENERGY_DRAIN * dt;
+    drain += RUN_ENERGY_DRAIN * dt;
   }
   if(isFlying){
     drain += FLY_ENERGY_DRAIN * dt;
@@ -606,13 +611,19 @@ function updateEnergy(dt, isRunning, isFlying){
   
   energy -= drain;
   
+  // Se parou de correr/voar, recarrega (mais rápido que o drain)
+  if(!isRunning && !isFlying && energy < MAX_ENERGY){
+    energy += ENERGY_RECHARGE_RATE * dt;
+    if(energy > MAX_ENERGY) energy = MAX_ENERGY;
+  }
+  
+  // Se energia zerou durante o movimento
   if(energy <= 0){
     energy = 0;
-    energyDepleted = true;
-    energyDepleteTime = 0;
-    // Força parar de correr/voar
     running = false;
     if(flying) setFlying(false);
+    isRunning = false;
+    isFlying = false;
     updateFlyUI();
   }
   
@@ -624,7 +635,6 @@ function updateEnergyUI(){
   document.getElementById('hudEnergy').textContent = Math.round(pct) + '%';
   document.getElementById('energyFill').style.width = pct + '%';
   
-  // Muda cor da barra baseado na energia
   const fill = document.getElementById('energyFill');
   if(pct > 60) fill.style.background = 'linear-gradient(90deg, #44ff88, #44ff88)';
   else if(pct > 30) fill.style.background = 'linear-gradient(90deg, #ffaa44, #ffaa44)';
@@ -706,57 +716,54 @@ function genHoles(boxes, ox, oz, layerY, rng){
   const hx = ox + CHUNK_SIZE/2;
   const hz = oz + CHUNK_SIZE/2;
   
+  // BORDA DO BURACO - ANEL VERMELHO VISÍVEL
   const ringColor = new THREE.Color(0xff2200);
-  for(let i = 0; i < 24; i++){
-    const angle = (i / 24) * Math.PI * 2;
+  for(let i = 0; i < 32; i++){
+    const angle = (i / 32) * Math.PI * 2;
     const px = hx + Math.cos(angle) * (HOLE_RADIUS + 0.5);
     const pz = hz + Math.sin(angle) * (HOLE_RADIUS + 0.5);
-    boxes.push(box(px, layerY - 0.1, pz, 1.0, 0.3, 1.0, ringColor));
+    boxes.push(box(px, layerY - 0.1, pz, 1.2, 0.3, 1.2, ringColor));
   }
   
+  // ANEL INTERNO ESCURO
   const darkRing = new THREE.Color(0x000000);
-  for(let i = 0; i < 12; i++){
-    const angle = (i / 12) * Math.PI * 2;
+  for(let i = 0; i < 16; i++){
+    const angle = (i / 16) * Math.PI * 2;
     const px = hx + Math.cos(angle) * (HOLE_RADIUS - 1);
     const pz = hz + Math.sin(angle) * (HOLE_RADIUS - 1);
-    boxes.push(box(px, layerY - 0.05, pz, 2.0, 0.1, 2.0, darkRing));
+    boxes.push(box(px, layerY - 0.05, pz, 2.5, 0.1, 2.5, darkRing));
   }
   
+  // LUZES PISCANTES (12 pontos)
   for(let i = 0; i < 12; i++){
     const angle = (i / 12) * Math.PI * 2;
     const lx = hx + Math.cos(angle) * (HOLE_RADIUS - 3);
     const lz = hz + Math.sin(angle) * (HOLE_RADIUS - 3);
     const lightColor = new THREE.Color(0xff4400);
-    boxes.push(box(lx, layerY + 2.0, lz, 1.2, 1.2, 1.2, lightColor));
+    boxes.push(box(lx, layerY + 2.0, lz, 1.5, 1.5, 1.5, lightColor));
     
     if(i % 2 === 0){
       const lightColor2 = new THREE.Color(0xff8800);
-      boxes.push(box(lx + 2, layerY + 1.0, lz + 2, 0.8, 0.8, 0.8, lightColor2));
+      boxes.push(box(lx + 2, layerY + 1.0, lz + 2, 1.0, 1.0, 1.0, lightColor2));
     }
   }
   
-  for(let i = 0; i < 16; i++){
-    const angle = (i / 16) * Math.PI * 2;
+  // PAREDES DO BURACO
+  for(let i = 0; i < 20; i++){
+    const angle = (i / 20) * Math.PI * 2;
     const px = hx + Math.cos(angle) * (HOLE_RADIUS - 0.5);
     const pz = hz + Math.sin(angle) * (HOLE_RADIUS - 0.5);
     const wallColor = new THREE.Color(0x333355);
-    boxes.push(box(px, layerY - 15, pz, 1.0, 30, 1.0, wallColor));
+    boxes.push(box(px, layerY - 15, pz, 1.2, 30, 1.2, wallColor));
   }
   
-  for(let i = 0; i < 8; i++){
-    const angle = (i / 8) * Math.PI * 2 + 0.2;
-    const tx = hx + Math.cos(angle) * (HOLE_RADIUS - 2);
-    const tz = hz + Math.sin(angle) * (HOLE_RADIUS - 2);
-    const textColor = new THREE.Color(0xff8800);
-    boxes.push(box(tx, layerY + 3.0, tz, 0.8, 0.8, 0.8, textColor));
-  }
-  
+  // VIGAS RADIAIS
   for(let i = 0; i < 8; i++){
     const angle = (i / 8) * Math.PI * 2;
     const px = hx + Math.cos(angle) * (HOLE_RADIUS * 0.7);
     const pz = hz + Math.sin(angle) * (HOLE_RADIUS * 0.7);
     const beamColor = new THREE.Color(0x666688);
-    boxes.push(box(px, layerY - 5, pz, 2.0, 10, 2.0, beamColor));
+    boxes.push(box(px, layerY - 5, pz, 2.5, 10, 2.5, beamColor));
   }
 }
 
@@ -923,6 +930,7 @@ function generateChunkBoxes(cx, cz, layerIndex, salt, isSpawn){
   const groundColor_c = groundColor(rng);
   boxes.push(box(ox+CHUNK_SIZE/2, layerY - 0.5, oz+CHUNK_SIZE/2, CHUNK_SIZE, 1, CHUNK_SIZE, groundColor_c));
   
+  // GERA BURACOS (AGORA APARECENDO!)
   genHoles(boxes, ox, oz, layerY, rng);
   
   if(isSpawn && layerIndex === 0){
@@ -988,7 +996,7 @@ function buildChunkMesh(boxes){
   return mesh;
 }
 
-/* ---------------- CHUNK STREAMING SYSTEM ---------------- */
+/* ---------------- CHUNK STREAMING SYSTEM (1000m) ---------------- */
 const chunkGroup = new THREE.Group();
 scene.add(chunkGroup);
 
@@ -1145,7 +1153,7 @@ function updateDayNight(dt){
   return isDay;
 }
 
-/* ---------------- LANTERNA ---------------- */
+/* ---------------- LANTERNA +20% ---------------- */
 function toggleFlashlight(){
   flashlightOn = !flashlightOn;
   flashlight.intensity = flashlightOn ? 80 : 0;
@@ -1165,7 +1173,7 @@ function updateFlashlight(){
   flashlight.target.position.copy(target);
   
   flashlight.distance = 150;
-  flashlight.angle = 0.4;
+  flashlight.angle = 0.48; // +20% (de 0.4 para 0.48)
 }
 
 /* ---------------- PLAYER STATE ---------------- */
@@ -1177,7 +1185,6 @@ let running = false;
 let wantsJump = false;
 let flying = false;
 let isDay = true;
-let anomaliaSpawned = false;
 
 const raycaster = new THREE.Raycaster();
 const _fwd = new THREE.Vector3(), _right = new THREE.Vector3();
@@ -1233,14 +1240,11 @@ function updateFlight(dt, inForward, inStrafe, ascend, descend){
 
   camera.position.copy(player.position);
   camera.rotation.set(pitch, yaw, 0, 'YXZ');
-  
-  // Atualiza energia (voando)
-  updateEnergy(dt, false, true);
 }
 
 function updatePhysics(dt, inForward, inStrafe){
-  const isRunning = running && !energyDepleted;
-  const speed = WALK_SPEED * (isRunning ? RUN_MULT : 1);
+  const canRun = running && energy > 0;
+  const speed = WALK_SPEED * (canRun ? RUN_MULT : 1);
   _fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
   _right.set(Math.cos(yaw), 0, -Math.sin(yaw));
 
@@ -1307,9 +1311,6 @@ function updatePhysics(dt, inForward, inStrafe){
   
   const currentLayer = getLayerFromY(player.position.y);
   document.getElementById('hudLayer').textContent = currentLayer;
-  
-  // Atualiza energia (correndo)
-  updateEnergy(dt, isRunning, false);
 }
 
 /* ---------------- INPUT: PC ---------------- */
@@ -1533,8 +1534,6 @@ function beginGame(selectedMode){
   camera.position.copy(player.position);
   cycleTime = 0;
   energy = MAX_ENERGY;
-  energyDepleted = false;
-  energyDepleteTime = 0;
   updateEnergyUI();
   animate();
 }
@@ -1571,7 +1570,25 @@ function animate(){
   isDay = updateDayNight(dt);
 
   const inVec = mode==='pc' ? pcInputVector() : mobileInputVector();
-  if(flying){
+  
+  // ATUALIZA ENERGIA ANTES DO MOVIMENTO
+  const isRunningNow = running && !flying && energy > 0;
+  const isFlyingNow = flying && energy > 0;
+  updateEnergy(dt, isRunningNow, isFlyingNow);
+  
+  // SE ENERGIA ZEROU, CANCELA MOVIMENTO
+  const canRun = running && energy > 0;
+  const canFly = flying && energy > 0;
+  
+  if(flying && !canFly){
+    setFlying(false);
+  }
+  if(running && !canRun){
+    running = false;
+    btnRun.classList.remove('active');
+  }
+  
+  if(canFly){
     const ascend = mode==='pc' ? !!keys['Space'] : flyUpHeld;
     const descend = mode==='pc' ? !!(keys['ShiftLeft']||keys['ShiftRight']||keys['ControlLeft']) : flyDownHeld;
     updateFlight(dt, inVec.f, inVec.s, ascend, descend);
@@ -1581,8 +1598,8 @@ function animate(){
 
   updateFlashlight();
   
-  // ATUALIZA ANOMALIA
-  updateAnomalia(dt, player.position);
+  // ATUALIZA ANOMALIA (SEMPRE PERSEGUE)
+  updateAnomalia(dt, player.position, isDay);
 
   _fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));
   updateStreaming(player.position.x, player.position.y, player.position.z, _fwd.x, _fwd.z, 2);
