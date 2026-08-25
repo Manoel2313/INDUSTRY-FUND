@@ -283,20 +283,27 @@ const CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
 
 // ===== CAMADAS INFINITAS =====
 const LAYER_HEIGHT  = 400;
-const HOLE_RADIUS   = 60;
-const HOLE_SPACING  = 400;
+const HOLE_RADIUS   = 14;        // meia-largura do vao do poco (vao total = 28m)
+const HOLE_SPACING  = 400;       // um poco candidato a cada bloco de 400m (4x4 chunks)
+const HOLE_CHANCE   = 0.55;      // chance de o bloco sortear um poco
+const SHAFT_SALT    = 0x5A17;    // salt fixo: a decisao nao pode variar com o salt do chunk
+const SHAFT_CLEAR   = HOLE_RADIUS + 6;  // raio da clareira mantida livre de estruturas
+const STAIR_RADIUS  = 11;        // raio da helice, dentro do vao
+const STEP_RISE     = 0.6;       // altura do degrau (< 0.9 do raycast lateral = step-up automatico)
+const STEP_RUN      = 1.5;       // avanco em arco por degrau
 
 // ===== ANOMALIA (NOVAS CONFIGURAÇÕES) =====
 const ANOMALIA_HEIGHT = 100;          // 100 METROS
 const ANOMALIA_SPAWN_DIST = 900;      // 900m de distância
 const ANOMALIA_DEATH_RADIUS = 90;     // 90 METROS (zona de morte)
 const ANOMALIA_DESTROY_RADIUS = 150;  // 150 METROS (destruição)
-const ANOMALIA_SPEED_MULT = 1.5;      // Velocidade = velocidade do jogador * 1.5
+const ANOMALIA_SPEED_MULT = 0.9;      // Velocidade = velocidade do jogador * 0.9
 
 const EYE_HEIGHT   = 1.7;
 const PLAYER_RADIUS = 0.4;
 const GRAVITY      = -24;
 const JUMP_SPEED   = 8.2;
+const MAX_FALL_SPEED = 55;       // velocidade terminal: impede tunelar pelo chao numa queda de 400m
 
 /* ---------------- THREE SETUP ---------------- */
 const canvas = document.getElementById('renderCanvas');
@@ -678,7 +685,7 @@ function updateAnomalia(dt, playerPos, isDay, playerSpeed){
     return;
   }
   
-  // Velocidade = velocidade do jogador * 1.5
+  // Velocidade = velocidade do jogador * ANOMALIA_SPEED_MULT
   const speed = playerSpeed * ANOMALIA_SPEED_MULT;
   const moveSpeed = Math.min(speed * dt, dist * 0.3);
   
@@ -784,60 +791,118 @@ function grimeColor(rng){
 
 /* ---------------- CHUNK CONTENT GENERATION ---------------- */
 
-function genHoles(boxes, ox, oz, layerY, rng){
-  const chunkDist = Math.floor(Math.hypot(ox, oz) / HOLE_SPACING);
-  const seed = (Math.floor(ox / HOLE_SPACING) * 7919 + Math.floor(oz / HOLE_SPACING) * 104729) & 0x7FFFFFFF;
-  const localRng = mulberry32(seed + layerY * 9999);
-  
-  const shouldHaveHole = localRng() < 0.25;
-  if(!shouldHaveHole) return;
-  
-  const hx = ox + CHUNK_SIZE/2;
-  const hz = oz + CHUNK_SIZE/2;
-  
-  const ringColor = new THREE.Color(0xff2200);
-  for(let i = 0; i < 32; i++){
-    const angle = (i / 32) * Math.PI * 2;
-    const px = hx + Math.cos(angle) * (HOLE_RADIUS + 0.5);
-    const pz = hz + Math.sin(angle) * (HOLE_RADIUS + 0.5);
-    boxes.push(box(px, layerY - 0.1, pz, 1.2, 0.3, 1.2, ringColor));
+/* ---------------- POCOS ENTRE CAMADAS ----------------
+   O mundo e feito de boxes solidas e nao ha CSG, entao um "buraco" no chao
+   so existe se a laje for emitida COM a abertura (genGround). O chao da
+   camada N e o teto da camada N-1, logo um unico poco serve as duas.
+   O chunk que sorteia o poco tambem constroi a escada helicoidal que desce
+   ate a camada de baixo, mantendo tudo em um chunk so.                    */
+
+// Determinista por (cx,cz,layer). NAO usa o salt do chunk: o chunk de baixo
+// consulta esta funcao para a camada de cima e as duas respostas precisam
+// bater mesmo depois de um descarregamento (que incrementa o salt).
+function shaftForChunk(cx, cz, layer){
+  if(cx===0 && cz===0 && layer===0) return null;   // chunk de spawn fica livre
+  const per = Math.max(1, Math.round(HOLE_SPACING / CHUNK_SIZE));
+  const rng = mulberry32(hashSeed(Math.floor(cx/per), Math.floor(cz/per), layer, SHAFT_SALT));
+  if(rng() >= HOLE_CHANCE) return null;
+  // dentro do bloco, um unico chunk recebe o poco
+  const pickX = Math.floor(rng()*per), pickZ = Math.floor(rng()*per);
+  if((((cx % per)+per)%per) !== pickX) return null;
+  if((((cz % per)+per)%per) !== pickZ) return null;
+  // jitter mantendo o vao inteiro dentro dos limites do chunk
+  const span = Math.max(0, CHUNK_SIZE - (HOLE_RADIUS+8)*2);
+  return {
+    x: cx*CHUNK_SIZE + CHUNK_SIZE/2 + (rng()-0.5)*span,
+    z: cz*CHUNK_SIZE + CHUNK_SIZE/2 + (rng()-0.5)*span
+  };
+}
+
+// Laje do chao: uma box inteira, ou 4 faixas contornando a abertura.
+function genGround(boxes, ox, oz, layerY, color, hole){
+  const y = layerY - 0.5;
+  if(!hole){
+    boxes.push(box(ox+CHUNK_SIZE/2, y, oz+CHUNK_SIZE/2, CHUNK_SIZE, 1, CHUNK_SIZE, color));
+    return;
   }
-  
-  const darkRing = new THREE.Color(0x000000);
-  for(let i = 0; i < 16; i++){
-    const angle = (i / 16) * Math.PI * 2;
-    const px = hx + Math.cos(angle) * (HOLE_RADIUS - 1);
-    const pz = hz + Math.sin(angle) * (HOLE_RADIUS - 1);
-    boxes.push(box(px, layerY - 0.05, pz, 2.5, 0.1, 2.5, darkRing));
+  const x0=ox, x1=ox+CHUNK_SIZE, z0=oz, z1=oz+CHUNK_SIZE;
+  const hx0=Math.max(x0, hole.x-HOLE_RADIUS), hx1=Math.min(x1, hole.x+HOLE_RADIUS);
+  const hz0=Math.max(z0, hole.z-HOLE_RADIUS), hz1=Math.min(z1, hole.z+HOLE_RADIUS);
+  const slab=(ax,az,bx,bz)=>{
+    const w=bx-ax, d=bz-az;
+    if(w<=0.01 || d<=0.01) return;
+    boxes.push(box(ax+w/2, y, az+d/2, w, 1, d, color));
+  };
+  slab(x0, z0, hx0, z1);    // oeste
+  slab(hx1, z0, x1, z1);    // leste
+  slab(hx0, z0, hx1, hz0);  // norte
+  slab(hx0, hz1, hx1, z1);  // sul
+}
+
+// Remove estruturas que invadem a coluna do poco (em toda a altura do chunk).
+function outsideShaft(b, hole, radius){
+  if(!hole) return true;
+  if(b.x + b.w/2 <= hole.x-radius || b.x - b.w/2 >= hole.x+radius) return true;
+  if(b.z + b.d/2 <= hole.z-radius || b.z - b.d/2 >= hole.z+radius) return true;
+  return false;
+}
+
+// Torre-escada ocupando o vao entre esta camada e a de baixo.
+function genShaft(boxes, hole, layerY, rng){
+  const r = HOLE_RADIUS;
+  const bottomY = layerY - LAYER_HEIGHT;
+  const frameColor = new THREE.Color(0xff2200);
+  const stairColor = structColor(rng);
+  const markColor  = new THREE.Color(0xff8800);
+  const steelColor = new THREE.Color(0x4a4f57);
+
+  // faixa de aviso rente ao chao (sinaliza a borda sem bloquear a passagem)
+  for(let i=0;i<28;i++){
+    const t = (i/28)*4;
+    const side = Math.floor(t), f = (t-side)*2 - 1;
+    const px = side===0 ? hole.x+f*r : side===1 ? hole.x+r : side===2 ? hole.x-f*r : hole.x-r;
+    const pz = side===0 ? hole.z-r   : side===1 ? hole.z+f*r : side===2 ? hole.z+r : hole.z-f*r;
+    boxes.push(box(px, layerY+0.15, pz, 3.4, 0.3, 3.4, i%2 ? frameColor : markColor));
   }
-  
-  for(let i = 0; i < 12; i++){
-    const angle = (i / 12) * Math.PI * 2;
-    const lx = hx + Math.cos(angle) * (HOLE_RADIUS - 3);
-    const lz = hz + Math.sin(angle) * (HOLE_RADIUS - 3);
-    const lightColor = new THREE.Color(0xff4400);
-    boxes.push(box(lx, layerY + 2.0, lz, 1.5, 1.5, 1.5, lightColor));
-    
-    if(i % 2 === 0){
-      const lightColor2 = new THREE.Color(0xff8800);
-      boxes.push(box(lx + 2, layerY + 1.0, lz + 2, 1.0, 1.0, 1.0, lightColor2));
-    }
+
+  // colunas de canto + poste central, atravessando o vao inteiro
+  const h = LAYER_HEIGHT, cy = bottomY + h/2;
+  for(const sx of [-1,1]) for(const sz of [-1,1]){
+    boxes.push(box(hole.x + sx*(r+1.5), cy, hole.z + sz*(r+1.5), 2.4, h, 2.4, steelColor));
   }
-  
-  for(let i = 0; i < 20; i++){
-    const angle = (i / 20) * Math.PI * 2;
-    const px = hx + Math.cos(angle) * (HOLE_RADIUS - 0.5);
-    const pz = hz + Math.sin(angle) * (HOLE_RADIUS - 0.5);
-    const wallColor = new THREE.Color(0x333355);
-    boxes.push(box(px, layerY - 15, pz, 1.2, 30, 1.2, wallColor));
+  boxes.push(box(hole.x, cy, hole.z, 2.6, h, 2.6, steelColor));
+
+  // aneis de travamento entre as colunas
+  for(let y = bottomY + 40; y < layerY - 10; y += 50){
+    boxes.push(box(hole.x, y, hole.z-(r+1.5), (r+1.5)*2, 1.2, 1.2, steelColor));
+    boxes.push(box(hole.x, y, hole.z+(r+1.5), (r+1.5)*2, 1.2, 1.2, steelColor));
+    boxes.push(box(hole.x-(r+1.5), y, hole.z, 1.2, 1.2, (r+1.5)*2, steelColor));
+    boxes.push(box(hole.x+(r+1.5), y, hole.z, 1.2, 1.2, (r+1.5)*2, steelColor));
   }
-  
-  for(let i = 0; i < 8; i++){
-    const angle = (i / 8) * Math.PI * 2;
-    const px = hx + Math.cos(angle) * (HOLE_RADIUS * 0.7);
-    const pz = hz + Math.sin(angle) * (HOLE_RADIUS * 0.7);
-    const beamColor = new THREE.Color(0x666688);
-    boxes.push(box(px, layerY - 5, pz, 2.5, 10, 2.5, beamColor));
+
+  // passarela de acesso no nivel do chao, alinhada ao inicio da helice (angulo 0 = +X)
+  const walkLen = r - 9;
+  boxes.push(box(hole.x + 9 + walkLen/2, layerY-0.2, hole.z, walkLen, 0.4, 4.2, stairColor));
+
+  // helice: comeca no degrau 1 para nao ficar coplanar com a passarela
+  const steps = Math.round(LAYER_HEIGHT / STEP_RISE);
+  const angStep = STEP_RUN / STAIR_RADIUS;
+  for(let i=1;i<=steps;i++){
+    const a = -i*angStep;
+    const y = layerY - i*STEP_RISE;
+    boxes.push(box(
+      hole.x + Math.cos(a)*STAIR_RADIUS,
+      y - 0.2,
+      hole.z + Math.sin(a)*STAIR_RADIUS,
+      4, 0.4, 4,
+      i % 24 === 0 ? markColor : stairColor
+    ));
+  }
+
+  // luzes de balizamento ao longo da descida
+  for(let y = bottomY + 20; y < layerY; y += 35){
+    boxes.push(box(hole.x + r - 1, y, hole.z, 1.2, 1.2, 1.2, new THREE.Color(0xff4400)));
+    boxes.push(box(hole.x - r + 1, y + 17, hole.z, 1.2, 1.2, 1.2, new THREE.Color(0xff4400)));
   }
 }
 
@@ -998,36 +1063,46 @@ function generateChunkBoxes(cx, cz, layerIndex, salt, isSpawn){
   const rng = mulberry32(hashSeed(cx, cz, layerIndex, salt));
   const ox = cx*CHUNK_SIZE, oz = cz*CHUNK_SIZE;
   const layerY = layerIndex * LAYER_HEIGHT;
-  
+
+  // poco que abre o chao desta camada, e poco da camada de cima cuja escada
+  // desce ate aqui: ambos precisam de espaco livre neste chunk
+  const holeHere  = shaftForChunk(cx, cz, layerIndex);
+  const holeAbove = shaftForChunk(cx, cz, layerIndex + 1);
+
   const boxes = [];
-  
-  const groundColor_c = groundColor(rng);
-  boxes.push(box(ox+CHUNK_SIZE/2, layerY - 0.5, oz+CHUNK_SIZE/2, CHUNK_SIZE, 1, CHUNK_SIZE, groundColor_c));
-  
-  genHoles(boxes, ox, oz, layerY, rng);
-  
+  genGround(boxes, ox, oz, layerY, groundColor(rng), holeHere);
+
+  // estruturas vao para um array a parte para poderem ser filtradas sem tocar no chao
+  let structs = [];
+
   if(isSpawn && layerIndex === 0){
-    genBuildings(boxes, ox, oz, layerY, rng, 2);
-    genPillarfield(boxes, ox, oz, layerY, rng);
-    genClutterAndPiercers(boxes, ox, oz, layerY, rng, 6);
-    if(rng()<0.8) genWall(boxes, ox, oz, layerY, rng);
-    if(rng()<0.7) genTunnel(boxes, ox, oz, layerY, rng);
-    if(rng()<0.5) genBridge(boxes, ox, oz, layerY, rng);
-    return boxes;
+    genBuildings(structs, ox, oz, layerY, rng, 2);
+    genPillarfield(structs, ox, oz, layerY, rng);
+    genClutterAndPiercers(structs, ox, oz, layerY, rng, 6);
+    if(rng()<0.8) genWall(structs, ox, oz, layerY, rng);
+    if(rng()<0.7) genTunnel(structs, ox, oz, layerY, rng);
+    if(rng()<0.5) genBridge(structs, ox, oz, layerY, rng);
+  } else {
+    genBuildings(structs, ox, oz, layerY, rng, 5);
+    genPillarfield(structs, ox, oz, layerY, rng);
+    if(rng()<0.8) genWall(structs, ox, oz, layerY, rng);
+    if(rng()<0.7) genTunnel(structs, ox, oz, layerY, rng);
+    if(rng()<0.9) genBridge(structs, ox, oz, layerY, rng);
+    if(rng()<0.5) genBridge(structs, ox, oz, layerY, rng);
+    if(rng()<0.35) genMegastructure(structs, ox, oz, layerY, rng);
+    genClutterAndPiercers(structs, ox, oz, layerY, rng, 12);
+    if(rng()<0.6) genWall(structs, ox, oz, layerY, rng);
+    if(rng()<0.5) genTunnel(structs, ox, oz, layerY, rng);
   }
-  
-  genBuildings(boxes, ox, oz, layerY, rng, 5);
-  genPillarfield(boxes, ox, oz, layerY, rng);
-  if(rng()<0.8) genWall(boxes, ox, oz, layerY, rng);
-  if(rng()<0.7) genTunnel(boxes, ox, oz, layerY, rng);
-  if(rng()<0.9) genBridge(boxes, ox, oz, layerY, rng);
-  if(rng()<0.5) genBridge(boxes, ox, oz, layerY, rng);
-  if(rng()<0.35) genMegastructure(boxes, ox, oz, layerY, rng);
-  genClutterAndPiercers(boxes, ox, oz, layerY, rng, 12);
-  
-  if(rng()<0.6) genWall(boxes, ox, oz, layerY, rng);
-  if(rng()<0.5) genTunnel(boxes, ox, oz, layerY, rng);
-  
+
+  if(holeHere || holeAbove){
+    structs = structs.filter(b =>
+      outsideShaft(b, holeHere, SHAFT_CLEAR) && outsideShaft(b, holeAbove, SHAFT_CLEAR));
+  }
+  for(let i=0;i<structs.length;i++) boxes.push(structs[i]);
+
+  if(holeHere) genShaft(boxes, holeHere, layerY, rng);
+
   return boxes;
 }
 
@@ -1256,6 +1331,7 @@ let velocityY = 0;
 let grounded = true;
 let running = false;
 let wantsJump = false;
+let fallStartY = null;
 let flying = false;
 let isDay = true;
 
@@ -1266,6 +1342,7 @@ const _moveVec = new THREE.Vector3(), _originVec = new THREE.Vector3();
 
 function setFlying(value){
   flying = value;
+  fallStartY = null;
   if(flying){ velocityY = 0; grounded = false; }
   else { velocityY = 0; }
   updateFlyUI();
@@ -1306,10 +1383,6 @@ function updateFlight(dt, inForward, inStrafe, ascend, descend){
   player.position.x += dx;
   player.position.y += dy;
   player.position.z += dz;
-
-  if(player.position.y < -80){ 
-    player.position.set(0, EYE_HEIGHT+2, 0);
-  }
 
   camera.position.copy(player.position);
   camera.rotation.set(pitch, yaw, 0, 'YXZ');
@@ -1352,13 +1425,14 @@ function updatePhysics(dt, inForward, inStrafe){
   player.position.z += dz;
 
   velocityY += GRAVITY*dt;
+  if(velocityY < -MAX_FALL_SPEED) velocityY = -MAX_FALL_SPEED;
   if(wantsJump && grounded){ velocityY = JUMP_SPEED; grounded = false; }
   wantsJump = false;
   player.position.y += velocityY*dt;
 
   const downOrigin = new THREE.Vector3(player.position.x, (player.position.y-EYE_HEIGHT)+1.2, player.position.z);
   raycaster.set(downOrigin, new THREE.Vector3(0,-1,0));
-  raycaster.far = 6;
+  raycaster.far = Math.max(6, Math.abs(velocityY)*dt + 2);
   const groundHits = raycaster.intersectObjects(chunkGroup.children, false);
   if(groundHits.length>0){
     const groundY = groundHits[0].point.y;
@@ -1367,14 +1441,19 @@ function updatePhysics(dt, inForward, inStrafe){
       player.position.y = groundY + EYE_HEIGHT;
       velocityY = 0;
       grounded = true;
+      fallStartY = null;
     } else if (currentFeet > groundY + 0.2) {
       grounded = false;
     }
   } else {
     grounded = false;
-    if(player.position.y < -80){
-      player.position.set(0, EYE_HEIGHT+2, 0);
+    // o mundo e infinito para baixo: a queda entre camadas e legitima.
+    // rede de seguranca so se cair varias camadas sem encontrar nenhum chao.
+    if(fallStartY === null) fallStartY = player.position.y;
+    if(fallStartY - player.position.y > LAYER_HEIGHT*3){
+      player.position.y = getLayerFromY(player.position.y)*LAYER_HEIGHT + EYE_HEIGHT + 2;
       velocityY = 0;
+      fallStartY = null;
     }
   }
 
@@ -1601,6 +1680,7 @@ function beginGame(selectedMode){
   loadingLabel.textContent='CARREGANDO 0%';
   loadingBarInner.style.width='0%';
   player.position.set(0, EYE_HEIGHT, 0);
+  velocityY = 0; fallStartY = null; grounded = true;
   yaw = 0; pitch = 0;
   camera.position.copy(player.position);
   cycleTime = 0;
