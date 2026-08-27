@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>INDUSTRY FUND - ANOMALIA GIGANTE</title>
+<title>INDUSTRY FUND - TORNADO NEON</title>
 <style>
   :root{
     --gray-950:#0c0d0f;
@@ -48,7 +48,7 @@
     font-size:11px;
     text-transform:uppercase;
   }
-  #platformRow{display:flex;gap:22px;}
+  #platformRow{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;}
   .platBtn{
     font-family:var(--font-ui);
     letter-spacing:4px;
@@ -63,6 +63,83 @@
   }
   .platBtn:hover{background:var(--gray-700);border-color:var(--accent);}
   .platBtn:active{transform:scale(0.97);}
+  .platBtn.active{background:var(--accent);border-color:var(--accent);color:#111;}
+
+  #menuScreen{
+    position:absolute;inset:0;z-index:60;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:
+      linear-gradient(180deg, rgba(12,13,15,0.85), rgba(12,13,15,0.95)),
+      repeating-linear-gradient(90deg, #17181b 0px, #17181b 2px, #121316 2px, #121316 64px);
+    gap:20px;
+    padding:20px;
+  }
+  #menuTitle{
+    font-family:var(--font-ui);
+    font-weight:700;
+    letter-spacing:10px;
+    font-size:clamp(20px,3vw,36px);
+    color:var(--gray-100);
+    text-transform:uppercase;
+    text-shadow:0 0 24px rgba(200,144,31,0.15);
+    border-bottom:2px solid var(--gray-700);
+    padding-bottom:12px;
+    margin-bottom:8px;
+  }
+  .menuRow{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    width:100%;
+    max-width:500px;
+  }
+  .menuLabel{
+    color:var(--gray-300);
+    font-size:10px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+  }
+  .menuOptions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .menuOpt{
+    font-family:var(--font-ui);
+    font-size:11px;
+    padding:6px 16px;
+    color:var(--gray-300);
+    background:var(--gray-800);
+    border:1px solid var(--gray-700);
+    cursor:pointer;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    transition:all .15s;
+    border-radius:4px;
+  }
+  .menuOpt:hover{background:var(--gray-700);border-color:var(--accent);}
+  .menuOpt.active{background:var(--accent);border-color:var(--accent);color:#111;}
+  #btnStartGame{
+    font-family:var(--font-ui);
+    letter-spacing:6px;
+    font-size:16px;
+    padding:14px 50px;
+    color:var(--gray-100);
+    background:var(--accent);
+    border:1px solid var(--accent);
+    cursor:pointer;
+    text-transform:uppercase;
+    transition:all .15s;
+    margin-top:10px;
+    border-radius:4px;
+  }
+  #btnStartGame:hover{background:var(--gray-700);border-color:var(--gray-300);color:var(--gray-100);}
+  #btnStartGame:active{transform:scale(0.97);}
 
   #loadingScreen{
     position:absolute;inset:0;z-index:40;
@@ -82,6 +159,9 @@
   #hud .lbl{color:var(--gray-500);}
   #hudLayer{color:var(--accent);font-weight:bold;}
   #hudTimeOfDay{color:var(--accent);}
+  #hudCamera{color:var(--gray-300);font-size:11px;letter-spacing:1px;}
+  #hudCamera span{color:var(--accent);}
+
   #crosshair{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
     width:6px;height:6px;border-radius:50%;background:rgba(230,230,230,0.75);
@@ -92,48 +172,92 @@
     font-family:var(--font-ui);font-size:11px;letter-spacing:1px;display:none;pointer-events:none;
   }
 
-  #mobileControls{position:absolute;inset:0;z-index:20;display:none;}
-  #joystickZone{
-    position:absolute;left:26px;bottom:26px;width:130px;height:130px;
-    border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);
-    touch-action:none;
-  }
-  #joystickKnob{
-    position:absolute;left:35px;top:35px;width:60px;height:60px;border-radius:50%;
-    background:rgba(230,230,230,0.35);border:1px solid rgba(255,255,255,0.4);
+  #mobileControls{
+    position:absolute;inset:0;z-index:20;
+    display:none;
     pointer-events:none;
   }
-  #btnJump{
-    position:absolute;right:28px;bottom:100px;width:78px;height:78px;border-radius:50%;
-    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);
-    color:var(--gray-100);font-family:var(--font-ui);font-size:11px;letter-spacing:1px;
-    display:flex;align-items:center;justify-content:center;touch-action:none;
+  #mobileControls > * { pointer-events:auto; }
+
+  #joystickZone{
+    position:absolute;left:20px;bottom:20px;width:120px;height:120px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.06);
+    border:2px solid rgba(255,255,255,0.15);
+    backdrop-filter:blur(4px);
+    touch-action:none;
+    box-shadow:0 0 30px rgba(0,0,0,0.3);
   }
+  #joystickKnob{
+    position:absolute;left:32px;top:32px;width:56px;height:56px;border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,0.25), rgba(255,255,255,0.05));
+    border:2px solid rgba(255,255,255,0.2);
+    pointer-events:none;
+    box-shadow:0 0 20px rgba(255,255,255,0.05);
+  }
+  .mobileBtn{
+    border-radius:50%;
+    background:rgba(255,255,255,0.06);
+    border:2px solid rgba(255,255,255,0.15);
+    backdrop-filter:blur(4px);
+    color:var(--gray-100);
+    font-family:var(--font-ui);
+    font-size:10px;
+    letter-spacing:1px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    touch-action:none;
+    box-shadow:0 0 30px rgba(0,0,0,0.3);
+    transition:all 0.15s;
+    text-shadow:0 1px 4px rgba(0,0,0,0.5);
+  }
+  .mobileBtn:active{transform:scale(0.92);}
+  .mobileBtn.active{background:var(--accent);border-color:var(--accent);color:#111;text-shadow:none;}
+
+  #btnJump{
+    position:absolute;right:20px;bottom:120px;width:72px;height:72px;
+    font-size:11px;
+    border-color:rgba(255,200,100,0.2);
+  }
+  #btnJump:active{background:rgba(255,200,100,0.15);}
+
   #btnRun{
-    position:absolute;right:24px;bottom:24px;width:64px;height:64px;border-radius:50%;
-    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);
-    color:var(--gray-100);font-family:var(--font-ui);font-size:10px;letter-spacing:1px;
-    display:flex;align-items:center;justify-content:center;touch-action:none;
+    position:absolute;right:20px;bottom:20px;width:60px;height:60px;
+    font-size:9px;
   }
   #btnRun.active{background:var(--accent);border-color:var(--accent);color:#111;}
+
   #btnFly{
-    position:absolute;right:26px;top:22px;width:70px;height:70px;border-radius:50%;
-    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);
-    color:var(--gray-100);font-family:var(--font-ui);font-size:11px;letter-spacing:1px;
-    display:flex;align-items:center;justify-content:center;touch-action:none;
+    position:absolute;right:20px;top:20px;width:64px;height:64px;
+    font-size:10px;
+    border-color:rgba(100,200,255,0.2);
   }
   #btnFly.active{background:#3a86c8;border-color:#3a86c8;color:#0c0d0f;}
+
   #btnFlashlight{
     position:absolute;left:50%;bottom:100px;transform:translateX(-50%);
-    width:70px;height:70px;border-radius:50%;
-    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);
-    color:var(--gray-100);font-family:var(--font-ui);font-size:11px;letter-spacing:1px;
-    display:flex;align-items:center;justify-content:center;touch-action:none;
+    width:64px;height:64px;
+    font-size:10px;
+    border-color:rgba(255,220,100,0.2);
   }
   #btnFlashlight.active{background:#ffdd44;border-color:#ffdd44;color:#0c0d0f;}
-  #camLookZone{position:absolute;inset:0;touch-action:none;}
 
-  /* ===== GAME OVER SCREEN (CUBO ROXO) ===== */
+  #btnCamera{
+    position:absolute;left:20px;top:20px;width:56px;height:56px;
+    font-size:9px;
+    border-color:rgba(100,200,255,0.2);
+    background:rgba(0,0,0,0.4);
+  }
+  #btnCamera.active{background:rgba(100,200,255,0.2);border-color:#3a86c8;}
+
+  #camLookZone{
+    position:absolute;inset:0;
+    touch-action:none;
+    pointer-events:auto;
+  }
+
+  /* GAME OVER - CUBO ROXO */
   #gameOverScreen{
     position:absolute;inset:0;z-index:100;
     display:none;
@@ -201,17 +325,26 @@
     0%{transform:translateY(0px);}
     100%{transform:translateY(4px);}
   }
+
+  /* CUBO ROXO - 3D */
+  .purple-cube-container{
+    position:absolute;
+    inset:0;
+    z-index:90;
+    pointer-events:none;
+    display:none;
+  }
 </style>
 </head>
 <body>
 
 <canvas id="renderCanvas"></canvas>
 
-<!-- GAME OVER SCREEN (CUBO ROXO) -->
+<!-- GAME OVER - CUBO ROXO -->
 <div id="gameOverScreen">
   <div class="gameOverGlitch"></div>
-  <div id="gameOverTitle">⬛ VOCÊ FOI TRAPADO</div>
-  <div id="gameOverSub">A ANOMALIA TE PEGOU</div>
+  <div id="gameOverTitle">⬛ CUBO ROXO</div>
+  <div id="gameOverSub">VOCÊ FOI TRAPADO</div>
   <div id="gameOverStats">
     TEMPO SOBREVIVIDO: <span id="goTime">00:00</span><br>
     POSIÇÃO: <span id="goPos">0, 0, 0</span><br>
@@ -220,10 +353,11 @@
   <div id="gameOverTimer">RETORNANDO EM 5s</div>
 </div>
 
+<!-- START -->
 <div id="startScreen">
   <div>
     <div id="startTitle">Industry&nbsp;Fund</div>
-    <div id="startSub">ANOMALIA GIGANTE • FUJA!</div>
+    <div id="startSub">TORNADO NEON • FUJA!</div>
   </div>
   <div id="platformRow">
     <button class="platBtn" id="btnPC">PC</button>
@@ -231,27 +365,70 @@
   </div>
 </div>
 
+<!-- MENU -->
+<div id="menuScreen">
+  <div id="menuTitle">⚙️ CONFIGURAÇÕES</div>
+  <div class="menuRow">
+    <span class="menuLabel">🔴 ANOMALIA</span>
+    <div class="menuOptions" id="anomaliaOpts">
+      <button class="menuOpt active" data-value="on">ATIVADA</button>
+      <button class="menuOpt" data-value="off">DESATIVADA</button>
+    </div>
+  </div>
+  <div class="menuRow">
+    <span class="menuLabel">📡 ALCANCE</span>
+    <div class="menuOptions" id="renderOpts">
+      <button class="menuOpt" data-value="600">600m</button>
+      <button class="menuOpt" data-value="1000">1.000m</button>
+      <button class="menuOpt active" data-value="2500">2.500m</button>
+    </div>
+  </div>
+  <div class="menuRow">
+    <span class="menuLabel">🌓 CICLO</span>
+    <div class="menuOptions" id="cycleOpts">
+      <button class="menuOpt" data-value="day">☀️ DIA</button>
+      <button class="menuOpt" data-value="night">🌙 NOITE</button>
+      <button class="menuOpt active" data-value="cycle">🔄 CICLO</button>
+    </div>
+  </div>
+  <div class="menuRow">
+    <span class="menuLabel">⏱️ DURAÇÃO</span>
+    <div class="menuOptions" id="durationOpts">
+      <button class="menuOpt" data-value="30">30s</button>
+      <button class="menuOpt active" data-value="120">2min</button>
+      <button class="menuOpt" data-value="300">5min</button>
+      <button class="menuOpt" data-value="600">10min</button>
+    </div>
+  </div>
+  <button id="btnStartGame">▶ INICIAR JOGO</button>
+</div>
+
+<!-- LOADING -->
 <div id="loadingScreen">
   <div id="loadingLabel">CARREGANDO 0%</div>
   <div id="loadingBarOuter"><div id="loadingBarInner"></div></div>
 </div>
 
+<!-- HUD -->
 <div id="hud">
   <div><span class="lbl">Tempo:</span> <span id="hudTime">00:00:00</span></div>
   <div><span class="lbl">Posição:</span> <span id="hudPos">0.0, 0.0, 0.0</span></div>
   <div><span class="lbl">Camada:</span> <span id="hudLayer">0</span></div>
   <div><span class="lbl">Período:</span> <span id="hudTimeOfDay">☀️ DIA</span></div>
+  <div id="hudCamera">🎥 <span id="hudCamMode">3ª PESSOA</span></div>
 </div>
 <div id="crosshair"></div>
-<div id="pcHint">WASD mover · ESPAÇO pular · Q correr · E voar · F lanterna · MOUSE olhar</div>
+<div id="pcHint">WASD mover · Q correr · E voar · F lanterna · R câmera · MOUSE olhar</div>
 
+<!-- MOBILE CONTROLS -->
 <div id="mobileControls">
   <div id="camLookZone"></div>
+  <button class="mobileBtn" id="btnCamera">🎥 CÂM</button>
   <div id="joystickZone"><div id="joystickKnob"></div></div>
-  <div id="btnJump">PULAR</div>
-  <div id="btnRun">CORRER</div>
-  <div id="btnFly">VOAR</div>
-  <div id="btnFlashlight">🔦 LUZ</div>
+  <button class="mobileBtn" id="btnJump">⬆ PULAR</button>
+  <button class="mobileBtn" id="btnRun">🏃 CORRER</button>
+  <button class="mobileBtn" id="btnFly">✈ VOAR</button>
+  <button class="mobileBtn" id="btnFlashlight">🔦 LUZ</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -260,109 +437,343 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - ANOMALIA GIGANTE (SEM ENERGIA)
+   INDUSTRY FUND - TORNADO NEON + CUBO ROXO 5m³
    ====================================================================== */
 
-/* ---------------- CONFIG ---------------- */
-const CHUNK_SIZE      = 100;
-const ACTIVE_RADIUS    = 1000;
-const UNLOAD_MARGIN    = 60;
-const UNLOAD_RADIUS    = ACTIVE_RADIUS + UNLOAD_MARGIN;
-const INITIAL_RADIUS   = 220;
-const FADE_TIME        = 1.1;
+/* ===== MENU ===== */
+let menuConfig = {
+  anomalia: true,
+  renderDistance: 2500,
+  cycleMode: 'cycle',
+  cycleDuration: 120
+};
+let selectedMode = null;
 
-// ===== VELOCIDADES =====
+function setupMenu(){
+  document.querySelectorAll('#anomaliaOpts .menuOpt').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#anomaliaOpts .menuOpt').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      menuConfig.anomalia = btn.dataset.value === 'on';
+    });
+  });
+  document.querySelectorAll('#renderOpts .menuOpt').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#renderOpts .menuOpt').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      menuConfig.renderDistance = parseInt(btn.dataset.value);
+    });
+  });
+  document.querySelectorAll('#cycleOpts .menuOpt').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#cycleOpts .menuOpt').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      menuConfig.cycleMode = btn.dataset.value;
+    });
+  });
+  document.querySelectorAll('#durationOpts .menuOpt').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#durationOpts .menuOpt').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      menuConfig.cycleDuration = parseInt(btn.dataset.value);
+    });
+  });
+  document.getElementById('btnStartGame').addEventListener('click', ()=>{
+    beginGame(selectedMode);
+  });
+}
+
+document.getElementById('btnPC').addEventListener('click', ()=>{
+  selectedMode = 'pc';
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('menuScreen').style.display = 'flex';
+  setupMenu();
+});
+document.getElementById('btnMobile').addEventListener('click', ()=>{
+  selectedMode = 'mobile';
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('menuScreen').style.display = 'flex';
+  setupMenu();
+});
+
+/* ---------------- CONFIG ---------------- */
+let CHUNK_SIZE = 100;
+let ACTIVE_RADIUS = 2500;
+let UNLOAD_MARGIN = 60;
+let UNLOAD_RADIUS = ACTIVE_RADIUS + UNLOAD_MARGIN;
+let INITIAL_RADIUS = 220;
+let FADE_TIME = 1.1;
+
 const WALK_SPEED   = 5;
 const RUN_MULT     = 5;
 const FLY_SPEED    = 100;
 
-// ===== CICLO DIA/NOITE =====
-const DAY_DURATION  = 180;
-const NIGHT_DURATION = 180;
-const CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
+let DAY_DURATION = 120;
+let NIGHT_DURATION = 120;
+let CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
 
-// ===== CAMADAS INFINITAS =====
 const LAYER_HEIGHT  = 400;
-const HOLE_RADIUS   = 14;        // meia-largura do vao do poco (vao total = 28m)
-const HOLE_SPACING  = 400;       // um poco candidato a cada bloco de 400m (4x4 chunks)
-const HOLE_CHANCE   = 0.55;      // chance de o bloco sortear um poco
-const SHAFT_SALT    = 0x5A17;    // salt fixo: a decisao nao pode variar com o salt do chunk
-const SHAFT_CLEAR   = HOLE_RADIUS + 6;  // raio da clareira mantida livre de estruturas
-const STAIR_RADIUS  = 11;        // raio da helice, dentro do vao
-const STEP_RISE     = 0.6;       // altura do degrau (< 0.9 do raycast lateral = step-up automatico)
-const STEP_RUN      = 1.5;       // avanco em arco por degrau
+const HOLE_RADIUS   = 14;
+const HOLE_SPACING  = 400;
+const HOLE_CHANCE   = 0.55;
+const SHAFT_SALT    = 0x5A17;
+const SHAFT_CLEAR   = HOLE_RADIUS + 6;
+const STAIR_RADIUS  = 11;
+const STEP_RISE     = 0.6;
+const STEP_RUN      = 1.5;
 
-// ===== ANOMALIA (NOVAS CONFIGURAÇÕES) =====
-const ANOMALIA_HEIGHT = 100;          // 100 METROS
-const ANOMALIA_SPAWN_DIST = 900;      // 900m de distância
-const ANOMALIA_DEATH_RADIUS = 90;     // 90 METROS (zona de morte)
-const ANOMALIA_DESTROY_RADIUS = 150;  // 150 METROS (destruição)
-const ANOMALIA_SPEED_MULT = 0.9;      // Velocidade = velocidade do jogador * 0.9
+// ===== TORNADO NEON =====
+const TORNADO_HEIGHT = 80;
+const TORNADO_SPAWN_DIST = 900;
+const TORNADO_DEATH_RADIUS = 40;
+const TORNADO_DESTROY_RADIUS = 100;
+const TORNADO_SPEED_MULT = 0.9;
 
 const EYE_HEIGHT   = 1.7;
 const PLAYER_RADIUS = 0.4;
 const GRAVITY      = -24;
 const JUMP_SPEED   = 8.2;
-const MAX_FALL_SPEED = 55;       // velocidade terminal: impede tunelar pelo chao numa queda de 400m
+const MAX_FALL_SPEED = 55;
+
+/* ===== MODO DE CÂMERA ===== */
+let cameraMode = 'third';
+const THIRD_PERSON_DISTANCE = 5.0;
+
+function toggleCamera(){
+  cameraMode = cameraMode === 'third' ? 'first' : 'third';
+  document.getElementById('hudCamMode').textContent = cameraMode === 'third' ? '3ª PESSOA' : '1ª PESSOA';
+  const btn = document.getElementById('btnCamera');
+  if(btn) btn.classList.toggle('active', cameraMode === 'first');
+  playerGroup.visible = cameraMode === 'third';
+  document.getElementById('crosshair').style.display = cameraMode === 'first' ? 'block' : 'none';
+}
 
 /* ---------------- THREE SETUP ---------------- */
 const canvas = document.getElementById('renderCanvas');
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  powerPreference: "high-performance"
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-const SKY_DAY = new THREE.Color(0x87CEEB);
-const SKY_NIGHT = new THREE.Color(0x000000);
-const scene = new THREE.Scene();
-scene.background = SKY_DAY.clone();
-scene.fog = new THREE.Fog(0x87CEEB, 80, UNLOAD_RADIUS + 40);
-
-const camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, UNLOAD_RADIUS+200);
+const isMobile = window.innerWidth < 768;
+const FOV = isMobile ? 65 : 72;
+const camera = new THREE.PerspectiveCamera(FOV, window.innerWidth/window.innerHeight, 0.1, 20000);
 camera.rotation.order = 'YXZ';
 
-// --- Iluminação ---
+const SKY_DAY = new THREE.Color(0x1a1a2e);
+const SKY_NIGHT = new THREE.Color(0x0a0a14);
+const scene = new THREE.Scene();
+scene.background = SKY_DAY.clone();
+scene.fog = new THREE.Fog(0x1a1a2e, 80, 20000);
+
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
 scene.add(ambientLight);
-
-const hemisphereLight = new THREE.HemisphereLight(0xdfe6ea, 0x3a3d42, 0.8);
+const hemisphereLight = new THREE.HemisphereLight(0xdfe6ea, 0x3a3d42, 0.7);
 scene.add(hemisphereLight);
-
 const sunLight = new THREE.DirectionalLight(0xfff4de, 1.2);
 sunLight.position.set(180,260,120);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.mapSize.width = 4096;
+sunLight.shadow.mapSize.height = 4096;
 sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 500;
-sunLight.shadow.camera.left = -100;
-sunLight.shadow.camera.right = 100;
-sunLight.shadow.camera.top = 100;
-sunLight.shadow.camera.bottom = -100;
+sunLight.shadow.camera.far = 800;
+sunLight.shadow.camera.left = -200;
+sunLight.shadow.camera.right = 200;
+sunLight.shadow.camera.top = 200;
+sunLight.shadow.camera.bottom = -200;
 scene.add(sunLight);
-
-const fillLight = new THREE.DirectionalLight(0xaebbc9, 0.4);
+const fillLight = new THREE.DirectionalLight(0x446688, 0.3);
 fillLight.position.set(-160,120,-140);
 scene.add(fillLight);
 
-// --- Lanterna ---
+/* ===== LANTERNA ===== */
 const flashlight = new THREE.SpotLight(0xffeedd, 0);
 flashlight.angle = 0.48;
 flashlight.penumbra = 0.3;
 flashlight.decay = 1;
 flashlight.distance = 150;
-flashlight.position.set(0, EYE_HEIGHT, 0);
-flashlight.target.position.set(0, EYE_HEIGHT, -100);
+flashlight.position.set(0, 1.2, 0);
+flashlight.target.position.set(0, 1.2, -100);
 flashlight.castShadow = true;
 scene.add(flashlight);
 scene.add(flashlight.target);
-
 let flashlightOn = false;
 
-/* ---------------- GAME OVER ---------------- */
+function onResize(){
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const isMobile = w < 768;
+  camera.aspect = w/h;
+  camera.fov = isMobile ? 65 : 72;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+/* ===== PERSONAGEM ===== */
+const playerGroup = new THREE.Group();
+scene.add(playerGroup);
+
+function createPlayer(){
+  while(playerGroup.children.length > 0){
+    const child = playerGroup.children[0];
+    playerGroup.remove(child);
+    if(child.geometry) child.geometry.dispose();
+    if(child.material) child.material.dispose();
+  }
+
+  const bodyGeo = new THREE.BoxGeometry(0.8, 1.0, 0.5);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff6633, roughness: 0.8, metalness: 0.1 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.9;
+  body.castShadow = true;
+  playerGroup.add(body);
+
+  const headGeo = new THREE.SphereGeometry(0.3, 12, 12);
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xf5d0b8, roughness: 0.6 });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = 1.65;
+  head.castShadow = true;
+  playerGroup.add(head);
+
+  const maskGroup = new THREE.Group();
+  const filterGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.15, 8);
+  const filterMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
+  const filter = new THREE.Mesh(filterGeo, filterMat);
+  filter.rotation.x = Math.PI/2;
+  filter.position.set(0, -0.02, 0.22);
+  maskGroup.add(filter);
+  const maskGeo = new THREE.SphereGeometry(0.18, 8, 8);
+  const maskMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
+  const mask = new THREE.Mesh(maskGeo, maskMat);
+  mask.scale.set(1, 1, 0.6);
+  mask.position.set(0, 0.02, 0.1);
+  maskGroup.add(mask);
+  const visorGeo = new THREE.SphereGeometry(0.07, 8, 8);
+  const visorMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x224466, emissiveIntensity: 0.5 });
+  const visor = new THREE.Mesh(visorGeo, visorMat);
+  visor.scale.set(0.6, 0.6, 0.2);
+  visor.position.set(0, 0.08, 0.18);
+  maskGroup.add(visor);
+  maskGroup.position.set(0, 1.62, 0.08);
+  playerGroup.add(maskGroup);
+
+  const helmetGeo = new THREE.SphereGeometry(0.28, 8, 8);
+  const helmetMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.4, metalness: 0.5 });
+  const helmet = new THREE.Mesh(helmetGeo, helmetMat);
+  helmet.scale.set(1, 1, 0.5);
+  helmet.position.set(0, 1.62, -0.15);
+  playerGroup.add(helmet);
+
+  const armMat = new THREE.MeshStandardMaterial({ color: 0xff6633, roughness: 0.8 });
+  for(let side of [-1, 1]){
+    const armGeo = new THREE.BoxGeometry(0.12, 0.6, 0.12);
+    const arm = new THREE.Mesh(armGeo, armMat);
+    arm.position.set(side * 0.5, 1.1, 0);
+    arm.castShadow = true;
+    playerGroup.add(arm);
+  }
+
+  const gloveMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+  for(let side of [-1, 1]){
+    const gloveGeo = new THREE.SphereGeometry(0.08, 6, 6);
+    const glove = new THREE.Mesh(gloveGeo, gloveMat);
+    glove.position.set(side * 0.5, 0.8, 0);
+    playerGroup.add(glove);
+  }
+
+  const legMat = new THREE.MeshStandardMaterial({ color: 0xff6633, roughness: 0.8 });
+  for(let side of [-1, 0.5]){
+    const legGeo = new THREE.BoxGeometry(0.15, 0.5, 0.15);
+    const leg = new THREE.Mesh(legGeo, legMat);
+    leg.position.set(side * 0.2, 0.35, 0);
+    leg.castShadow = true;
+    playerGroup.add(leg);
+  }
+
+  const bootMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+  for(let side of [-1, 0.5]){
+    const bootGeo = new THREE.BoxGeometry(0.18, 0.1, 0.25);
+    const boot = new THREE.Mesh(bootGeo, bootMat);
+    boot.position.set(side * 0.2, 0.08, 0.05);
+    playerGroup.add(boot);
+  }
+
+  const beltMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7 });
+  const beltGeo = new THREE.BoxGeometry(0.7, 0.06, 0.4);
+  const belt = new THREE.Mesh(beltGeo, beltMat);
+  belt.position.set(0, 0.55, 0);
+  playerGroup.add(belt);
+  const buckleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.8, roughness: 0.2 });
+  const buckleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.05);
+  const buckle = new THREE.Mesh(buckleGeo, buckleMat);
+  buckle.position.set(0, 0.55, 0.2);
+  playerGroup.add(buckle);
+
+  const tankMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.3, metalness: 0.7 });
+  for(let side of [-0.2, 0.2]){
+    const tankGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.3, 8);
+    const tank = new THREE.Mesh(tankGeo, tankMat);
+    tank.position.set(side, 0.9, -0.3);
+    tank.rotation.x = 0.1;
+    tank.castShadow = true;
+    playerGroup.add(tank);
+    const capMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6 });
+    const capGeo = new THREE.CylinderGeometry(0.05, 0.07, 0.03, 6);
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.position.set(side, 1.05, -0.3);
+    playerGroup.add(cap);
+  }
+
+  const hoseMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+  for(let side of [-0.2, 0.2]){
+    const hoseGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.3, 4);
+    const hose = new THREE.Mesh(hoseGeo, hoseMat);
+    hose.position.set(side * 0.7, 0.85, -0.15);
+    hose.rotation.z = side * 0.5;
+    hose.rotation.x = 0.3;
+    playerGroup.add(hose);
+  }
+
+  const lightMat = new THREE.MeshStandardMaterial({ 
+    color: 0xffeecc, 
+    emissive: 0xffdd44, 
+    emissiveIntensity: 0.3,
+    roughness: 0.3,
+    metalness: 0.5
+  });
+  const lightGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.08, 6);
+  const lightMesh = new THREE.Mesh(lightGeo, lightMat);
+  lightMesh.rotation.x = Math.PI/2;
+  lightMesh.position.set(0, 1.2, 0.3);
+  playerGroup.add(lightMesh);
+  const ringMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7 });
+  const ringGeo = new THREE.TorusGeometry(0.05, 0.015, 6, 8);
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI/2;
+  ring.position.set(0, 1.2, 0.33);
+  playerGroup.add(ring);
+
+  const bagMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 });
+  const bagGeo = new THREE.BoxGeometry(0.3, 0.15, 0.1);
+  const bag = new THREE.Mesh(bagGeo, bagMat);
+  bag.position.set(0, 0.7, -0.3);
+  playerGroup.add(bag);
+
+  playerGroup.position.y = 0;
+  playerGroup.visible = true;
+}
+
+/* ---------------- GAME OVER - CUBO ROXO ---------------- */
 let gameOverActive = false;
 let gameOverTimer = 0;
 const GAME_OVER_RESPAWN_TIME = 5;
@@ -370,15 +781,12 @@ const GAME_OVER_RESPAWN_TIME = 5;
 function showGameOver(playerPos, elapsed){
   gameOverActive = true;
   gameOverTimer = 0;
-  
   document.getElementById('hud').style.display = 'none';
   document.getElementById('crosshair').style.display = 'none';
   document.getElementById('pcHint').style.display = 'none';
   document.getElementById('mobileControls').style.display = 'none';
-  
   const screen = document.getElementById('gameOverScreen');
   screen.style.display = 'flex';
-  
   const s = Math.floor(elapsed/1000);
   const mm = String(Math.floor(s/60)).padStart(2,'0');
   const ss = String(s%60).padStart(2,'0');
@@ -386,22 +794,18 @@ function showGameOver(playerPos, elapsed){
   document.getElementById('goPos').textContent = 
     playerPos.x.toFixed(1)+', '+(playerPos.y-EYE_HEIGHT).toFixed(1)+', '+playerPos.z.toFixed(1);
   document.getElementById('goLayer').textContent = getLayerFromY(playerPos.y);
-  
   started = false;
 }
 
 function updateGameOver(dt){
   if(!gameOverActive) return;
-  
   gameOverTimer += dt;
   const remaining = Math.ceil(GAME_OVER_RESPAWN_TIME - gameOverTimer);
   document.getElementById('gameOverTimer').textContent = `RETORNANDO EM ${remaining}s`;
-  
   if(gameOverTimer >= GAME_OVER_RESPAWN_TIME){
     gameOverActive = false;
     document.getElementById('gameOverScreen').style.display = 'none';
     document.getElementById('startScreen').style.display = 'flex';
-    
     loadingComplete = false;
     chunkMap.clear();
     saltMap.clear();
@@ -411,16 +815,16 @@ function updateGameOver(dt){
       if(child.geometry) child.geometry.dispose();
       if(child.material) child.material.dispose();
     }
-    anomaliaAlive = false;
-    while(anomaliaGroup.children.length > 0){
-      const child = anomaliaGroup.children[0];
-      anomaliaGroup.remove(child);
+    tornadoAlive = false;
+    while(tornadoGroup.children.length > 0){
+      const child = tornadoGroup.children[0];
+      tornadoGroup.remove(child);
       if(child.geometry) child.geometry.dispose();
       if(child.material) child.material.dispose();
     }
-    if(anomaliaGlowLight){
-      scene.remove(anomaliaGlowLight);
-      anomaliaGlowLight = null;
+    if(tornadoGlowLight){
+      scene.remove(tornadoGlowLight);
+      tornadoGlowLight = null;
     }
     player.position.set(0, EYE_HEIGHT, 0);
     running = false;
@@ -431,296 +835,172 @@ function updateGameOver(dt){
   }
 }
 
-/* ---------------- ANOMALIA ---------------- */
-let anomaliaGroup = new THREE.Group();
-scene.add(anomaliaGroup);
-let anomaliaAlive = false;
-let anomaliaPos = new THREE.Vector3(0, 0, 0);
-let anomaliaGlowLight = null;
-let anomaliaParts = {
-  body: null,
-  eyes: [],
-  legs: [],
-  abdomen: null,
-  aura: null,
-  aura2: null
-};
+/* ---------------- TORNADO NEON ---------------- */
+let tornadoGroup = new THREE.Group();
+scene.add(tornadoGroup);
+let tornadoAlive = false;
+let tornadoPos = new THREE.Vector3(0, 0, 0);
+let tornadoGlowLight = null;
+let tornadoParticles = [];
 let animTime = 0;
+let playerPrevLayer = 0;
 
-function createAnomalia(){
-  while(anomaliaGroup.children.length > 0){
-    const child = anomaliaGroup.children[0];
-    anomaliaGroup.remove(child);
+const NEON_COLORS = [
+  0xff00ff, // rosa
+  0x8800ff, // roxo
+  0x00ff44, // verde
+  0xff8800, // laranja
+  0xff0044, // vermelho
+  0x00ccff  // azul
+];
+
+function createTornado(){
+  while(tornadoGroup.children.length > 0){
+    const child = tornadoGroup.children[0];
+    tornadoGroup.remove(child);
     if(child.geometry) child.geometry.dispose();
     if(child.material) child.material.dispose();
   }
-  
-  if(anomaliaGlowLight){
-    scene.remove(anomaliaGlowLight);
-    anomaliaGlowLight = null;
+  if(tornadoGlowLight){ scene.remove(tornadoGlowLight); tornadoGlowLight = null; }
+  tornadoParticles = [];
+
+  // CORPO DO TORNADO (cone espiral)
+  const segments = 60;
+  const rings = 30;
+  const height = TORNADO_HEIGHT;
+  const baseRadius = 12;
+  const topRadius = 2;
+
+  for(let i = 0; i < rings; i++){
+    const y = (i / rings) * height;
+    const radius = baseRadius - (i / rings) * (baseRadius - topRadius);
+    const colorIndex = Math.floor(i / rings * NEON_COLORS.length) % NEON_COLORS.length;
+    const color = NEON_COLORS[(colorIndex + Math.floor(animTime * 0.5)) % NEON_COLORS.length];
+    
+    for(let j = 0; j < segments; j++){
+      const angle = (j / segments) * Math.PI * 2 + i * 0.3 + animTime * 2;
+      const x = Math.cos(angle) * radius * (0.8 + Math.sin(animTime + i * 0.1) * 0.2);
+      const z = Math.sin(angle) * radius * (0.8 + Math.sin(animTime + i * 0.1) * 0.2);
+      
+      const size = 0.4 + Math.sin(animTime * 2 + i + j) * 0.2;
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(size, 6, 6),
+        new THREE.MeshStandardMaterial({
+          color: color,
+          emissive: color,
+          emissiveIntensity: 2 + Math.sin(animTime + i + j) * 0.5,
+          roughness: 0.2,
+          metalness: 0.1,
+          transparent: true,
+          opacity: 0.9
+        })
+      );
+      sphere.position.set(x, y + 2, z);
+      sphere.userData = { angleOffset: j, ringIndex: i, baseRadius: radius };
+      tornadoGroup.add(sphere);
+      tornadoParticles.push(sphere);
+    }
   }
-  
-  anomaliaParts.eyes = [];
-  anomaliaParts.legs = [];
-  
-  const bodyGeo = new THREE.SphereGeometry(20, 32, 32);
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0x000000,
-    roughness: 0.15,
-    metalness: 0.9,
-    emissive: 0x220022,
-    emissiveIntensity: 0.3
-  });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 50;
-  body.castShadow = true;
-  anomaliaGroup.add(body);
-  anomaliaParts.body = body;
-  
-  const eyeMat = new THREE.MeshStandardMaterial({
-    color: 0x8800ff,
-    emissive: 0x6600cc,
-    emissiveIntensity: 3,
-    roughness: 0.1
-  });
-  const eyeGeo = new THREE.SphereGeometry(3, 16, 16);
-  for(let i = 0; i < 7; i++){
-    const angle = (i / 7) * Math.PI * 2;
-    const eye = new THREE.Mesh(eyeGeo, eyeMat);
-    const radius = 18;
-    eye.position.set(
-      Math.cos(angle) * radius * 0.6,
-      50 + Math.sin(angle * 1.7) * 6,
-      Math.sin(angle) * radius * 0.6
-    );
-    anomaliaGroup.add(eye);
-    anomaliaParts.eyes.push(eye);
-  }
-  
-  const legMat = new THREE.MeshStandardMaterial({
-    color: 0x111111,
-    roughness: 0.4,
-    metalness: 0.4
-  });
-  
-  for(let i = 0; i < 10; i++){
-    const angle = (i / 10) * Math.PI * 2;
-    const legGroup = new THREE.Group();
-    
-    const seg1 = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 30, 8), legMat);
-    seg1.position.y = 15;
-    seg1.rotation.x = 0.4;
-    seg1.userData = { phase: i * 0.5 };
-    legGroup.add(seg1);
-    
-    const seg2 = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2, 25, 8), legMat);
-    seg2.position.set(0, -8, 12);
-    seg2.rotation.x = -0.6;
-    seg2.userData = { phase: i * 0.5 + 1 };
-    legGroup.add(seg2);
-    
-    const seg3 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.5, 20, 8), legMat);
-    seg3.position.set(0, -18, 22);
-    seg3.rotation.x = -0.3;
-    seg3.userData = { phase: i * 0.5 + 2 };
-    legGroup.add(seg3);
-    
-    legGroup.position.set(
-      Math.cos(angle) * 28,
-      35,
-      Math.sin(angle) * 28
-    );
-    legGroup.rotation.y = -angle;
-    legGroup.rotation.z = 0.3;
-    legGroup.userData = { baseAngle: angle, legIndex: i };
-    anomaliaGroup.add(legGroup);
-    anomaliaParts.legs.push(legGroup);
-  }
-  
-  const abdomenGeo = new THREE.SphereGeometry(15, 24, 24);
-  const abdomenMat = new THREE.MeshStandardMaterial({
-    color: 0x0a0a0a,
-    roughness: 0.3,
-    metalness: 0.6,
-    emissive: 0x110011,
-    emissiveIntensity: 0.2
-  });
-  const abdomen = new THREE.Mesh(abdomenGeo, abdomenMat);
-  abdomen.position.set(0, 30, -30);
-  abdomen.scale.set(1.3, 0.8, 1.5);
-  anomaliaGroup.add(abdomen);
-  anomaliaParts.abdomen = abdomen;
-  
-  anomaliaGlowLight = new THREE.PointLight(0xff0000, 0, 250);
-  anomaliaGlowLight.position.set(0, 50, 0);
-  anomaliaGroup.add(anomaliaGlowLight);
-  
+
+  // LUZ GLOW
+  tornadoGlowLight = new THREE.PointLight(0xff00ff, 0, 150);
+  tornadoGlowLight.position.set(0, TORNADO_HEIGHT/2, 0);
+  tornadoGroup.add(tornadoGlowLight);
+
+  // AURA PULSANTE
   const auraMat = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-    transparent: true,
-    opacity: 0.08,
-    wireframe: true
-  });
-  const aura = new THREE.Mesh(new THREE.SphereGeometry(35, 16, 16), auraMat);
-  aura.position.y = 50;
-  anomaliaGroup.add(aura);
-  anomaliaParts.aura = aura;
-  
-  const auraMat2 = new THREE.MeshBasicMaterial({
-    color: 0x8800ff,
+    color: 0xff00ff,
     transparent: true,
     opacity: 0.05,
     wireframe: true
   });
-  const aura2 = new THREE.Mesh(new THREE.SphereGeometry(45, 12, 12), auraMat2);
-  aura2.position.y = 50;
-  anomaliaGroup.add(aura2);
-  anomaliaParts.aura2 = aura2;
-  
-  anomaliaGroup.scale.set(1, 1, 1);
-  anomaliaAlive = true;
+  const aura = new THREE.Mesh(new THREE.SphereGeometry(20, 16, 16), auraMat);
+  aura.position.y = TORNADO_HEIGHT/2;
+  tornadoGroup.add(aura);
+
+  tornadoGroup.scale.set(1, 1, 1);
+  tornadoAlive = true;
 }
 
-function animateAnomalia(dt, isDay){
+function animateTornado(dt, isDay){
   animTime += dt;
   
-  if(!anomaliaParts.body) return;
-  
-  const breathe = Math.sin(animTime * 0.8) * 0.03;
-  anomaliaParts.body.scale.set(
-    1 + breathe * 0.5,
-    1 + breathe * 0.3,
-    1 + breathe * 0.5
-  );
-  
-  if(anomaliaParts.abdomen){
-    const abdPulse = Math.sin(animTime * 1.2 + 0.5) * 0.04;
-    anomaliaParts.abdomen.scale.set(
-      1.3 + abdPulse * 0.5,
-      0.8 + abdPulse * 0.3,
-      1.5 + abdPulse * 0.5
-    );
-  }
-  
-  anomaliaParts.legs.forEach((leg, index) => {
-    const walkCycle = Math.sin(animTime * 2 + index * 0.8) * 0.3;
-    leg.rotation.z = 0.3 + walkCycle * 0.15;
-    leg.position.y = 35 + Math.sin(animTime * 2 + index * 0.8) * 2;
+  // Atualiza partículas
+  tornadoParticles.forEach((part, index) => {
+    const i = part.userData.ringIndex || 0;
+    const j = part.userData.angleOffset || 0;
+    const radius = part.userData.baseRadius || 8;
+    const y = (i / 30) * TORNADO_HEIGHT;
+    const angle = (j / 60) * Math.PI * 2 + i * 0.3 + animTime * 2;
     
-    leg.children.forEach((seg, segIndex) => {
-      const phase = seg.userData.phase || 0;
-      const wave = Math.sin(animTime * 2.5 + phase + index * 0.3) * 0.2;
-      seg.rotation.x = (segIndex === 0 ? 0.4 : segIndex === 1 ? -0.6 : -0.3) + wave * 0.2;
-    });
-  });
-  
-  anomaliaParts.eyes.forEach((eye, index) => {
-    const blink = Math.sin(animTime * 3 + index * 1.2);
-    const intensity = 2 + Math.sin(animTime * 1.5 + index * 0.7) * 0.5;
-    if(blink > 0.8){
-      eye.material.emissiveIntensity = 0.1;
-    } else {
-      eye.material.emissiveIntensity = intensity;
-    }
-    const radius = 18;
-    const baseAngle = (index / 7) * Math.PI * 2;
-    const sway = Math.sin(animTime * 0.3 + index) * 0.5;
-    eye.position.x = Math.cos(baseAngle + sway * 0.1) * radius * 0.6;
-    eye.position.z = Math.sin(baseAngle + sway * 0.1) * radius * 0.6;
-  });
-  
-  if(anomaliaParts.aura){
-    const pulse = Math.sin(animTime * 0.5) * 0.3 + 0.7;
-    anomaliaParts.aura.scale.set(pulse, pulse, pulse);
-    anomaliaParts.aura.material.opacity = 0.05 + Math.sin(animTime * 0.7) * 0.03;
+    part.position.x = Math.cos(angle) * radius * (0.8 + Math.sin(animTime * 1.5 + i * 0.1) * 0.2);
+    part.position.z = Math.sin(angle) * radius * (0.8 + Math.sin(animTime * 1.5 + i * 0.1) * 0.2);
+    part.position.y = y + 2 + Math.sin(animTime * 2 + i) * 0.5;
     
-    anomaliaParts.aura2.scale.set(pulse * 0.9, pulse * 0.9, pulse * 0.9);
-    anomaliaParts.aura2.material.opacity = 0.03 + Math.sin(animTime * 0.5 + 1) * 0.02;
-  }
-  
-  if(anomaliaGlowLight){
-    if(!isDay){
-      anomaliaGlowLight.intensity = 15 + Math.sin(animTime * 2) * 5;
-      anomaliaGlowLight.color.setHex(0xff2200);
-      anomaliaGlowLight.distance = 250;
-    } else {
-      anomaliaGlowLight.intensity = 2 + Math.sin(animTime * 1.5) * 0.5;
-      anomaliaGlowLight.color.setHex(0x882200);
-      anomaliaGlowLight.distance = 100;
-    }
+    // MUDA DE COR LOUCAMENTE
+    const colorIndex = Math.floor((i / 30 * NEON_COLORS.length + animTime * 0.3)) % NEON_COLORS.length;
+    const color = NEON_COLORS[colorIndex];
+    part.material.color.setHex(color);
+    part.material.emissive.setHex(color);
+    part.material.emissiveIntensity = 2 + Math.sin(animTime * 3 + i + j) * 0.8;
+    
+    // TAMANHO PULSA
+    const size = 0.4 + Math.sin(animTime * 3 + i + j) * 0.2;
+    part.scale.set(size/0.4, size/0.4, size/0.4);
+  });
+
+  // GLOW PULSA
+  if(tornadoGlowLight){
+    const glowColor = NEON_COLORS[Math.floor(animTime * 0.5) % NEON_COLORS.length];
+    tornadoGlowLight.color.setHex(glowColor);
+    tornadoGlowLight.intensity = 20 + Math.sin(animTime * 2) * 8;
+    tornadoGlowLight.distance = 150 + Math.sin(animTime * 1.5) * 30;
   }
 }
 
-function spawnAnomalia(playerPos){
+function spawnTornado(playerPos){
   const angle = Math.random() * Math.PI * 2;
-  const dist = ANOMALIA_SPAWN_DIST + (Math.random() - 0.5) * 100;
-  
+  const spawnDist = ACTIVE_RADIUS - 200;
+  const dist = spawnDist + (Math.random() - 0.5) * 100;
   const spawnX = playerPos.x + Math.cos(angle) * dist;
   const spawnZ = playerPos.z + Math.sin(angle) * dist;
-  
   const layerY = Math.round(playerPos.y / LAYER_HEIGHT) * LAYER_HEIGHT;
-  
-  anomaliaPos.set(spawnX, layerY + ANOMALIA_HEIGHT/2, spawnZ);
-  anomaliaGroup.position.copy(anomaliaPos);
-  
-  if(!anomaliaAlive){
-    createAnomalia();
-  }
-  anomaliaAlive = true;
+  tornadoPos.set(spawnX, layerY + 2, spawnZ);
+  tornadoGroup.position.copy(tornadoPos);
+  if(!tornadoAlive){ createTornado(); }
+  tornadoAlive = true;
   animTime = 0;
+  playerPrevLayer = Math.round(playerPos.y / LAYER_HEIGHT);
 }
 
-function updateAnomalia(dt, playerPos, isDay, playerSpeed){
-  if(!anomaliaAlive || gameOverActive) return;
-  
-  animateAnomalia(dt, isDay);
-  
-  const dx = playerPos.x - anomaliaPos.x;
-  const dz = playerPos.z - anomaliaPos.z;
-  const dy = playerPos.y - anomaliaPos.y;
-  const dist = Math.hypot(dx, dy, dz);
-  
-  if(dist > ANOMALIA_SPAWN_DIST + 100){
-    spawnAnomalia(playerPos);
-    return;
-  }
-  
-  // Velocidade = velocidade do jogador * ANOMALIA_SPEED_MULT
-  const speed = playerSpeed * ANOMALIA_SPEED_MULT;
-  const moveSpeed = Math.min(speed * dt, dist * 0.3);
-  
-  if(dist > 1){
-    const normX = dx / dist;
-    const normY = dy / dist;
-    const normZ = dz / dist;
-    
-    anomaliaPos.x += normX * moveSpeed;
-    anomaliaPos.y += normY * moveSpeed * 0.3;
-    anomaliaPos.z += normZ * moveSpeed;
-    
-    const targetLayer = Math.round(playerPos.y / LAYER_HEIGHT) * LAYER_HEIGHT;
-    anomaliaPos.y += (targetLayer + ANOMALIA_HEIGHT/2 - anomaliaPos.y) * 0.01;
-    
-    anomaliaGroup.position.copy(anomaliaPos);
-    
-    const lookAngle = Math.atan2(dx, dz);
-    let currentAngle = anomaliaGroup.rotation.y;
-    let diff = lookAngle - currentAngle;
-    while(diff > Math.PI) diff -= Math.PI * 2;
-    while(diff < -Math.PI) diff += Math.PI * 2;
-    anomaliaGroup.rotation.y += diff * 0.05;
-  }
-  
-  // ===== ZONA DE DESTRUIÇÃO: 150 METROS =====
-  const destroyRadius = ANOMALIA_DESTROY_RADIUS;
+// DESTRÓI TUDO NO CAMINHO (menos o chão)
+function destroyEverythingInRadius(center, radius, playerLayer){
+  const toRemove = [];
   for(const [key, c] of chunkMap){
     const cx = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
     const cz = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
     const cy = c.layer * LAYER_HEIGHT;
-    const d = Math.hypot(cx - anomaliaPos.x, cz - anomaliaPos.z, cy - anomaliaPos.y);
+    const dy = cy - center.y;
+    const dist = Math.hypot(cx - center.x, cz - center.z, dy);
     
+    // NÃO destrói o chão da camada atual
     const isGround = Math.abs(cy - (c.layer * LAYER_HEIGHT)) < 2;
-    if(d < destroyRadius && c.state === 'active' && !isGround){
+    const isPlayerLayer = c.layer === playerLayer;
+    
+    // Destrói TUDO que não for chão da camada atual
+    if(dist < radius && c.state === 'active' && !isGround){
+      toRemove.push(key);
+    }
+    
+    // Se o jogador subiu de camada, destrói o "telhado" da camada anterior
+    if(isGround && c.layer === playerLayer + 1 && dist < radius){
+      toRemove.push(key);
+    }
+  }
+  
+  for(const key of toRemove){
+    const c = chunkMap.get(key);
+    if(c){
       chunkGroup.remove(c.mesh);
       c.mesh.geometry.dispose();
       c.mesh.material.dispose();
@@ -728,22 +1008,81 @@ function updateAnomalia(dt, playerPos, isDay, playerSpeed){
       saltMap.set(key, (saltMap.get(key)||0) + 1);
     }
   }
+}
+
+function updateTornado(dt, playerPos, isDay, playerSpeed){
+  if(!menuConfig.anomalia){
+    if(tornadoAlive){
+      tornadoAlive = false;
+      while(tornadoGroup.children.length > 0){
+        const child = tornadoGroup.children[0];
+        tornadoGroup.remove(child);
+        if(child.geometry) child.geometry.dispose();
+        if(child.material) child.material.dispose();
+      }
+      if(tornadoGlowLight){ scene.remove(tornadoGlowLight); tornadoGlowLight = null; }
+    }
+    return;
+  }
+  if(!tornadoAlive || gameOverActive) return;
   
-  // ===== ZONA DE MORTE: 90 METROS =====
-  if(dist < ANOMALIA_DEATH_RADIUS && !gameOverActive){
+  animateTornado(dt, isDay);
+  
+  const dx = playerPos.x - tornadoPos.x;
+  const dz = playerPos.z - tornadoPos.z;
+  const dy = playerPos.y - tornadoPos.y;
+  const dist = Math.hypot(dx, dy, dz);
+  
+  const currentLayer = Math.round(playerPos.y / LAYER_HEIGHT);
+  const tornadoLayer = Math.round(tornadoPos.y / LAYER_HEIGHT);
+  
+  // Se o jogador mudou de camada, o tornado sobe/desce
+  if(currentLayer !== tornadoLayer){
+    tornadoPos.y += (currentLayer * LAYER_HEIGHT + 2 - tornadoPos.y) * 0.05;
+  }
+  
+  if(dist > ACTIVE_RADIUS - 100){
+    spawnTornado(playerPos);
+    return;
+  }
+  
+  const speed = playerSpeed * TORNADO_SPEED_MULT;
+  const moveSpeed = Math.min(speed * dt * 1.2, dist * 0.4);
+  
+  if(dist > 1){
+    const normX = dx / dist;
+    const normY = dy / dist;
+    const normZ = dz / dist;
+    
+    tornadoPos.x += normX * moveSpeed;
+    tornadoPos.y += normY * moveSpeed * 0.2;
+    tornadoPos.z += normZ * moveSpeed;
+    
+    tornadoGroup.position.copy(tornadoPos);
+    
+    const lookAngle = Math.atan2(dx, dz);
+    tornadoGroup.rotation.y = lookAngle;
+  }
+  
+  // ===== ZONA DE DESTRUIÇÃO MASSIVA =====
+  const destroyRadius = TORNADO_DESTROY_RADIUS;
+  const center = tornadoPos.clone();
+  center.y = 0;
+  destroyEverythingInRadius(center, destroyRadius, currentLayer);
+  
+  // ===== ZONA DE MORTE =====
+  if(dist < TORNADO_DEATH_RADIUS && !gameOverActive){
     showGameOver(playerPos, performance.now() - gameStartTime);
   }
 }
 
-/* ---------------- GEOMETRY TEMPLATE ---------------- */
+/* ---------------- GEOMETRY ---------------- */
 const UNIT_BOX = new THREE.BoxGeometry(1,1,1).toNonIndexed();
 const BASE_POS = UNIT_BOX.attributes.position.array;
 const BASE_NORM = UNIT_BOX.attributes.normal.array;
 const VERTS_PER_BOX = BASE_POS.length/3;
-
 function box(x,y,z,w,h,d,color){ return {x,y,z,w,h,d,color}; }
 
-/* ---------------- SEEDED RNG ---------------- */
 function hashSeed(cx,cz,cy,salt){
   let h = 2166136261;
   h = Math.imul(h ^ (cx|0), 16777619);
@@ -762,319 +1101,126 @@ function mulberry32(a){
   };
 }
 
-/* ---------------- MATERIAL PALETTE ---------------- */
 function grayColor(rng, lo, hi, tint){
   const l = lo + rng()*(hi-lo);
   const hue = tint===undefined ? 0.58 + (rng()-0.5)*0.07 : tint;
   const sat = 0.03 + rng()*0.06;
-  const c = new THREE.Color();
-  c.setHSL(hue, sat, l);
-  return c;
+  const c = new THREE.Color(); c.setHSL(hue, sat, l); return c;
 }
-function groundColor(rng){ 
-  const c = grayColor(rng, 0.04, 0.10); 
-  return c; 
-}
-function structColor(rng){
-  const c = grayColor(rng, 0.12, 0.38);
-  if(rng() < 0.22) return grimeColor(rng);
-  return c;
-}
+function groundColor(rng){ const c = grayColor(rng, 0.04, 0.10); return c; }
+function structColor(rng){ const c = grayColor(rng, 0.12, 0.38); if(rng()<0.22) return grimeColor(rng); return c; }
 function grimeColor(rng){
   const c = new THREE.Color();
   const pick = rng();
-  if(pick < 0.4){ c.setHSL(0.08+rng()*0.04, 0.4+rng()*0.15, 0.16+rng()*0.14); }
-  else if(pick < 0.7){ c.setHSL(0.24+rng()*0.05, 0.2+rng()*0.15, 0.10+rng()*0.10); }
+  if(pick<0.4){ c.setHSL(0.08+rng()*0.04, 0.4+rng()*0.15, 0.16+rng()*0.14); }
+  else if(pick<0.7){ c.setHSL(0.24+rng()*0.05, 0.2+rng()*0.15, 0.10+rng()*0.10); }
   else { c.setHSL(0.0, 0.0, 0.05+rng()*0.06); }
   return c;
 }
 
-/* ---------------- CHUNK CONTENT GENERATION ---------------- */
-
-/* ---------------- POCOS ENTRE CAMADAS ----------------
-   O mundo e feito de boxes solidas e nao ha CSG, entao um "buraco" no chao
-   so existe se a laje for emitida COM a abertura (genGround). O chao da
-   camada N e o teto da camada N-1, logo um unico poco serve as duas.
-   O chunk que sorteia o poco tambem constroi a escada helicoidal que desce
-   ate a camada de baixo, mantendo tudo em um chunk so.                    */
-
-// Determinista por (cx,cz,layer). NAO usa o salt do chunk: o chunk de baixo
-// consulta esta funcao para a camada de cima e as duas respostas precisam
-// bater mesmo depois de um descarregamento (que incrementa o salt).
+/* ---------------- CHUNK ---------------- */
 function shaftForChunk(cx, cz, layer){
-  if(cx===0 && cz===0 && layer===0) return null;   // chunk de spawn fica livre
-  const per = Math.max(1, Math.round(HOLE_SPACING / CHUNK_SIZE));
+  if(cx===0 && cz===0 && layer===0) return null;
+  const per = Math.max(1, Math.round(HOLE_SPACING/CHUNK_SIZE));
   const rng = mulberry32(hashSeed(Math.floor(cx/per), Math.floor(cz/per), layer, SHAFT_SALT));
   if(rng() >= HOLE_CHANCE) return null;
-  // dentro do bloco, um unico chunk recebe o poco
   const pickX = Math.floor(rng()*per), pickZ = Math.floor(rng()*per);
-  if((((cx % per)+per)%per) !== pickX) return null;
-  if((((cz % per)+per)%per) !== pickZ) return null;
-  // jitter mantendo o vao inteiro dentro dos limites do chunk
+  if((((cx%per)+per)%per) !== pickX) return null;
+  if((((cz%per)+per)%per) !== pickZ) return null;
   const span = Math.max(0, CHUNK_SIZE - (HOLE_RADIUS+8)*2);
-  return {
-    x: cx*CHUNK_SIZE + CHUNK_SIZE/2 + (rng()-0.5)*span,
-    z: cz*CHUNK_SIZE + CHUNK_SIZE/2 + (rng()-0.5)*span
-  };
+  return { x: cx*CHUNK_SIZE + CHUNK_SIZE/2 + (rng()-0.5)*span, z: cz*CHUNK_SIZE + CHUNK_SIZE/2 + (rng()-0.5)*span };
 }
 
-// Laje do chao: uma box inteira, ou 4 faixas contornando a abertura.
 function genGround(boxes, ox, oz, layerY, color, hole){
   const y = layerY - 0.5;
-  if(!hole){
-    boxes.push(box(ox+CHUNK_SIZE/2, y, oz+CHUNK_SIZE/2, CHUNK_SIZE, 1, CHUNK_SIZE, color));
-    return;
-  }
+  if(!hole){ boxes.push(box(ox+CHUNK_SIZE/2, y, oz+CHUNK_SIZE/2, CHUNK_SIZE, 1, CHUNK_SIZE, color)); return; }
   const x0=ox, x1=ox+CHUNK_SIZE, z0=oz, z1=oz+CHUNK_SIZE;
   const hx0=Math.max(x0, hole.x-HOLE_RADIUS), hx1=Math.min(x1, hole.x+HOLE_RADIUS);
   const hz0=Math.max(z0, hole.z-HOLE_RADIUS), hz1=Math.min(z1, hole.z+HOLE_RADIUS);
-  const slab=(ax,az,bx,bz)=>{
-    const w=bx-ax, d=bz-az;
-    if(w<=0.01 || d<=0.01) return;
-    boxes.push(box(ax+w/2, y, az+d/2, w, 1, d, color));
-  };
-  slab(x0, z0, hx0, z1);    // oeste
-  slab(hx1, z0, x1, z1);    // leste
-  slab(hx0, z0, hx1, hz0);  // norte
-  slab(hx0, hz1, hx1, z1);  // sul
+  const slab=(ax,az,bx,bz)=>{ const w=bx-ax, d=bz-az; if(w<=0.01||d<=0.01) return; boxes.push(box(ax+w/2, y, az+d/2, w, 1, d, color)); };
+  slab(x0,z0,hx0,z1); slab(hx1,z0,x1,z1); slab(hx0,z0,hx1,hz0); slab(hx0,hz1,hx1,z1);
 }
 
-// Remove estruturas que invadem a coluna do poco (em toda a altura do chunk).
-function outsideShaft(b, hole, radius){
-  if(!hole) return true;
-  if(b.x + b.w/2 <= hole.x-radius || b.x - b.w/2 >= hole.x+radius) return true;
-  if(b.z + b.d/2 <= hole.z-radius || b.z - b.d/2 >= hole.z+radius) return true;
-  return false;
-}
+function outsideShaft(b, hole, radius){ if(!hole) return true; if(b.x+b.w/2 <= hole.x-radius || b.x-b.w/2 >= hole.x+radius) return true; if(b.z+b.d/2 <= hole.z-radius || b.z-b.d/2 >= hole.z+radius) return true; return false; }
 
-// Torre-escada ocupando o vao entre esta camada e a de baixo.
 function genShaft(boxes, hole, layerY, rng){
-  const r = HOLE_RADIUS;
-  const bottomY = layerY - LAYER_HEIGHT;
-  const frameColor = new THREE.Color(0xff2200);
-  const stairColor = structColor(rng);
-  const markColor  = new THREE.Color(0xff8800);
-  const steelColor = new THREE.Color(0x4a4f57);
-
-  // faixa de aviso rente ao chao (sinaliza a borda sem bloquear a passagem)
-  for(let i=0;i<28;i++){
-    const t = (i/28)*4;
-    const side = Math.floor(t), f = (t-side)*2 - 1;
-    const px = side===0 ? hole.x+f*r : side===1 ? hole.x+r : side===2 ? hole.x-f*r : hole.x-r;
-    const pz = side===0 ? hole.z-r   : side===1 ? hole.z+f*r : side===2 ? hole.z+r : hole.z-f*r;
-    boxes.push(box(px, layerY+0.15, pz, 3.4, 0.3, 3.4, i%2 ? frameColor : markColor));
-  }
-
-  // colunas de canto + poste central, atravessando o vao inteiro
-  const h = LAYER_HEIGHT, cy = bottomY + h/2;
-  for(const sx of [-1,1]) for(const sz of [-1,1]){
-    boxes.push(box(hole.x + sx*(r+1.5), cy, hole.z + sz*(r+1.5), 2.4, h, 2.4, steelColor));
-  }
-  boxes.push(box(hole.x, cy, hole.z, 2.6, h, 2.6, steelColor));
-
-  // aneis de travamento entre as colunas
-  for(let y = bottomY + 40; y < layerY - 10; y += 50){
-    boxes.push(box(hole.x, y, hole.z-(r+1.5), (r+1.5)*2, 1.2, 1.2, steelColor));
-    boxes.push(box(hole.x, y, hole.z+(r+1.5), (r+1.5)*2, 1.2, 1.2, steelColor));
-    boxes.push(box(hole.x-(r+1.5), y, hole.z, 1.2, 1.2, (r+1.5)*2, steelColor));
-    boxes.push(box(hole.x+(r+1.5), y, hole.z, 1.2, 1.2, (r+1.5)*2, steelColor));
-  }
-
-  // passarela de acesso no nivel do chao, alinhada ao inicio da helice (angulo 0 = +X)
-  const walkLen = r - 9;
-  boxes.push(box(hole.x + 9 + walkLen/2, layerY-0.2, hole.z, walkLen, 0.4, 4.2, stairColor));
-
-  // helice: comeca no degrau 1 para nao ficar coplanar com a passarela
-  const steps = Math.round(LAYER_HEIGHT / STEP_RISE);
-  const angStep = STEP_RUN / STAIR_RADIUS;
-  for(let i=1;i<=steps;i++){
-    const a = -i*angStep;
-    const y = layerY - i*STEP_RISE;
-    boxes.push(box(
-      hole.x + Math.cos(a)*STAIR_RADIUS,
-      y - 0.2,
-      hole.z + Math.sin(a)*STAIR_RADIUS,
-      4, 0.4, 4,
-      i % 24 === 0 ? markColor : stairColor
-    ));
-  }
-
-  // luzes de balizamento ao longo da descida
-  for(let y = bottomY + 20; y < layerY; y += 35){
-    boxes.push(box(hole.x + r - 1, y, hole.z, 1.2, 1.2, 1.2, new THREE.Color(0xff4400)));
-    boxes.push(box(hole.x - r + 1, y + 17, hole.z, 1.2, 1.2, 1.2, new THREE.Color(0xff4400)));
-  }
+  const r=HOLE_RADIUS, bottomY=layerY-LAYER_HEIGHT;
+  const frameColor=new THREE.Color(0xff2200), stairColor=structColor(rng), markColor=new THREE.Color(0xff8800), steelColor=new THREE.Color(0x4a4f57);
+  for(let i=0;i<28;i++){ const t=(i/28)*4; const side=Math.floor(t), f=(t-side)*2-1; const px=side===0?hole.x+f*r:side===1?hole.x+r:side===2?hole.x-f*r:hole.x-r; const pz=side===0?hole.z-r:side===1?hole.z+f*r:side===2?hole.z+r:hole.z-f*r; boxes.push(box(px, layerY+0.15, pz, 3.4,0.3,3.4, i%2?frameColor:markColor)); }
+  const h=LAYER_HEIGHT, cy=bottomY+h/2;
+  for(const sx of [-1,1]) for(const sz of [-1,1]){ boxes.push(box(hole.x+sx*(r+1.5), cy, hole.z+sz*(r+1.5), 2.4,h,2.4, steelColor)); }
+  boxes.push(box(hole.x, cy, hole.z, 2.6,h,2.6, steelColor));
+  for(let y=bottomY+40; y<layerY-10; y+=50){ boxes.push(box(hole.x,y,hole.z-(r+1.5),(r+1.5)*2,1.2,1.2,steelColor)); boxes.push(box(hole.x,y,hole.z+(r+1.5),(r+1.5)*2,1.2,1.2,steelColor)); boxes.push(box(hole.x-(r+1.5),y,hole.z,1.2,1.2,(r+1.5)*2,steelColor)); boxes.push(box(hole.x+(r+1.5),y,hole.z,1.2,1.2,(r+1.5)*2,steelColor)); }
+  const walkLen=r-9; boxes.push(box(hole.x+9+walkLen/2, layerY-0.2, hole.z, walkLen,0.4,4.2, stairColor));
+  const steps=Math.round(LAYER_HEIGHT/STEP_RISE); const angStep=STEP_RUN/STAIR_RADIUS;
+  for(let i=1;i<=steps;i++){ const a=-i*angStep; const y=layerY-i*STEP_RISE; boxes.push(box(hole.x+Math.cos(a)*STAIR_RADIUS, y-0.2, hole.z+Math.sin(a)*STAIR_RADIUS, 4,0.4,4, i%24===0?markColor:stairColor)); }
+  for(let y=bottomY+20; y<layerY; y+=35){ boxes.push(box(hole.x+r-1, y, hole.z, 1.2,1.2,1.2, new THREE.Color(0xff4400))); boxes.push(box(hole.x-r+1, y+17, hole.z, 1.2,1.2,1.2, new THREE.Color(0xff4400))); }
 }
 
 function genBuildings(boxes, ox, oz, layerY, rng, density){
-  const count = density * 8 + Math.floor(rng()*(density * 8 + 4));
+  const count = density*8 + Math.floor(rng()*(density*8+4));
   for(let i=0;i<count;i++){
-    const w = 3 + rng()*20, d = 3 + rng()*20, h = 4 + rng()*55;
-    const x = ox - 8 + rng()*(CHUNK_SIZE+16-w);
-    const z = oz - 8 + rng()*(CHUNK_SIZE+16-d);
-    boxes.push(box(x+w/2, layerY + h/2, z+d/2, w, h, d, structColor(rng)));
-    
-    if(rng()<0.6){
-      boxes.push(box(x+w/2, layerY + h+3, z+d/2, w*(0.2+rng()*0.5), 2+rng()*8, d*(0.2+rng()*0.5), grimeColor(rng)));
-    }
-    if(rng()<0.5){
-      boxes.push(box(x+w/2, layerY + h*(0.2+rng()*0.6), z+d/2 + d*0.4, w*0.6, 0.7, 1.2, grimeColor(rng)));
-    }
-    if(rng()<0.4){
-      boxes.push(box(x+w/2 + (rng()-0.5)*w*0.7, layerY + h*(0.1+rng()*0.7), z+d/2 + (rng()-0.5)*d*0.7,
-        2+rng()*6, 2+rng()*10, 2+rng()*6, grimeColor(rng)));
-    }
-    if(rng()<0.3){
-      boxes.push(box(x+w/2 + w*0.3, layerY + h*0.7, z+d/2 + d*0.3, w*0.4, h*1.2, d*0.4, structColor(rng)));
-    }
+    const w=3+rng()*20, d=3+rng()*20, h=4+rng()*55;
+    const x=ox-8+rng()*(CHUNK_SIZE+16-w), z=oz-8+rng()*(CHUNK_SIZE+16-d);
+    boxes.push(box(x+w/2, layerY+h/2, z+d/2, w,h,d, structColor(rng)));
+    if(rng()<0.6){ boxes.push(box(x+w/2, layerY+h+3, z+d/2, w*(0.2+rng()*0.5), 2+rng()*8, d*(0.2+rng()*0.5), grimeColor(rng))); }
+    if(rng()<0.5){ boxes.push(box(x+w/2, layerY+h*(0.2+rng()*0.6), z+d/2+d*0.4, w*0.6, 0.7, 1.2, grimeColor(rng))); }
+    if(rng()<0.4){ boxes.push(box(x+w/2+(rng()-0.5)*w*0.7, layerY+h*(0.1+rng()*0.7), z+d/2+(rng()-0.5)*d*0.7, 2+rng()*6, 2+rng()*10, 2+rng()*6, grimeColor(rng))); }
+    if(rng()<0.3){ boxes.push(box(x+w/2+w*0.3, layerY+h*0.7, z+d/2+d*0.3, w*0.4, h*1.2, d*0.4, structColor(rng))); }
   }
 }
 
 function genMegastructure(boxes, ox, oz, layerY, rng){
-  const w = 15 + rng()*35, d = 15 + rng()*35, h = 60 + rng()*220;
-  const x = ox + CHUNK_SIZE*(0.2+rng()*0.5), z = oz + CHUNK_SIZE*(0.2+rng()*0.5);
-  boxes.push(box(x, layerY + h/2, z, w, h, d, structColor(rng)));
-  
-  const beams = 6 + Math.floor(rng()*10);
-  for(let i=0;i<beams;i++){
-    const by = layerY + 8 + (h-20) * (i/(beams-1||1));
-    boxes.push(box(x, by, z, w+6+rng()*14, 1.2+rng()*3, d+6+rng()*14, grimeColor(rng)));
-  }
-  
-  if(rng()<0.5){
-    for(let i=0;i<4;i++){
-      const angle = (i/4)*Math.PI*2;
-      const px = x + Math.cos(angle)*w*0.6;
-      const pz = z + Math.sin(angle)*d*0.6;
-      boxes.push(box(px, layerY + h*0.3, pz, 3+rng()*8, 5+rng()*15, 3+rng()*8, grimeColor(rng)));
-    }
-  }
+  const w=15+rng()*35, d=15+rng()*35, h=60+rng()*220;
+  const x=ox+CHUNK_SIZE*(0.2+rng()*0.5), z=oz+CHUNK_SIZE*(0.2+rng()*0.5);
+  boxes.push(box(x, layerY+h/2, z, w,h,d, structColor(rng)));
+  const beams=6+Math.floor(rng()*10);
+  for(let i=0;i<beams;i++){ const by=layerY+8+(h-20)*(i/(beams-1||1)); boxes.push(box(x, by, z, w+6+rng()*14, 1.2+rng()*3, d+6+rng()*14, grimeColor(rng))); }
+  if(rng()<0.5){ for(let i=0;i<4;i++){ const angle=(i/4)*Math.PI*2; const px=x+Math.cos(angle)*w*0.6; const pz=z+Math.sin(angle)*d*0.6; boxes.push(box(px, layerY+h*0.3, pz, 3+rng()*8, 5+rng()*15, 3+rng()*8, grimeColor(rng))); } }
 }
 
 function genBridge(boxes, ox, oz, layerY, rng){
-  const alongX = rng() < 0.5;
-  const y = layerY + 4 + rng()*55;
-  const thickness = 1.5 + rng()*3.5, width = 4 + rng()*10;
-  const lateral = ox_lateral(ox, oz, alongX, rng);
-  if(alongX){
-    boxes.push(box(ox+CHUNK_SIZE/2, y, lateral, CHUNK_SIZE*1.3, thickness, width, structColor(rng)));
-    for(let i=0;i<6;i++){
-      const px = ox + 5 + i*(CHUNK_SIZE-10)/5;
-      boxes.push(box(px, layerY + Math.max(1,(y-layerY)/2), lateral, 2.5, Math.max(2,(y-layerY)), 2.5, structColor(rng)));
-    }
-  } else {
-    boxes.push(box(lateral, y, oz+CHUNK_SIZE/2, width, thickness, CHUNK_SIZE*1.3, structColor(rng)));
-    for(let i=0;i<6;i++){
-      const pz = oz + 5 + i*(CHUNK_SIZE-10)/5;
-      boxes.push(box(lateral, layerY + Math.max(1,(y-layerY)/2), pz, 2.5, Math.max(2,(y-layerY)), 2.5, structColor(rng)));
-    }
-  }
+  const alongX=rng()<0.5; const y=layerY+4+rng()*55; const thickness=1.5+rng()*3.5, width=4+rng()*10; const lateral=ox_lateral(ox,oz,alongX,rng);
+  if(alongX){ boxes.push(box(ox+CHUNK_SIZE/2, y, lateral, CHUNK_SIZE*1.3, thickness, width, structColor(rng))); for(let i=0;i<6;i++){ const px=ox+5+i*(CHUNK_SIZE-10)/5; boxes.push(box(px, layerY+Math.max(1,(y-layerY)/2), lateral, 2.5, Math.max(2,(y-layerY)), 2.5, structColor(rng))); } }
+  else { boxes.push(box(lateral, y, oz+CHUNK_SIZE/2, width, thickness, CHUNK_SIZE*1.3, structColor(rng))); for(let i=0;i<6;i++){ const pz=oz+5+i*(CHUNK_SIZE-10)/5; boxes.push(box(lateral, layerY+Math.max(1,(y-layerY)/2), pz, 2.5, Math.max(2,(y-layerY)), 2.5, structColor(rng))); } }
 }
-function ox_lateral(ox, oz, alongX, rng){
-  return alongX ? (oz + 10 + rng()*(CHUNK_SIZE-20)) : (ox + 10 + rng()*(CHUNK_SIZE-20));
-}
+function ox_lateral(ox, oz, alongX, rng){ return alongX ? (oz+10+rng()*(CHUNK_SIZE-20)) : (ox+10+rng()*(CHUNK_SIZE-20)); }
 
 function genTunnel(boxes, ox, oz, layerY, rng){
-  const alongX = rng() < 0.5;
-  const h = 5 + rng()*8, w = 5 + rng()*10, wallT = 1.5;
-  const jx = (rng()-0.5)*40, jz = (rng()-0.5)*40;
-  const cx = ox+CHUNK_SIZE/2+jx, cz = oz+CHUNK_SIZE/2+jz;
-  if(alongX){
-    boxes.push(box(cx, layerY + h/2, cz - w/2, CHUNK_SIZE*1.2, h, wallT, structColor(rng)));
-    boxes.push(box(cx, layerY + h/2, cz + w/2, CHUNK_SIZE*1.2, h, wallT, structColor(rng)));
-    boxes.push(box(cx, layerY + h, cz, CHUNK_SIZE*1.2, wallT, w, structColor(rng)));
-  } else {
-    boxes.push(box(cx - w/2, layerY + h/2, cz, wallT, h, CHUNK_SIZE*1.2, structColor(rng)));
-    boxes.push(box(cx + w/2, layerY + h/2, cz, wallT, h, CHUNK_SIZE*1.2, structColor(rng)));
-    boxes.push(box(cx, layerY + h, cz, w, wallT, CHUNK_SIZE*1.2, structColor(rng)));
-  }
-  if(rng()<0.4){
-    const h2 = 4 + rng()*6, w2 = 4 + rng()*8;
-    boxes.push(box(cx + 10, layerY + h2/2, cz - w2/2, 5, h2, wallT, grimeColor(rng)));
-    boxes.push(box(cx + 10, layerY + h2/2, cz + w2/2, 5, h2, wallT, grimeColor(rng)));
-  }
+  const alongX=rng()<0.5; const h=5+rng()*8, w=5+rng()*10, wallT=1.5; const jx=(rng()-0.5)*40, jz=(rng()-0.5)*40; const cx=ox+CHUNK_SIZE/2+jx, cz=oz+CHUNK_SIZE/2+jz;
+  if(alongX){ boxes.push(box(cx, layerY+h/2, cz-w/2, CHUNK_SIZE*1.2, h, wallT, structColor(rng))); boxes.push(box(cx, layerY+h/2, cz+w/2, CHUNK_SIZE*1.2, h, wallT, structColor(rng))); boxes.push(box(cx, layerY+h, cz, CHUNK_SIZE*1.2, wallT, w, structColor(rng))); }
+  else { boxes.push(box(cx-w/2, layerY+h/2, cz, wallT, h, CHUNK_SIZE*1.2, structColor(rng))); boxes.push(box(cx+w/2, layerY+h/2, cz, wallT, h, CHUNK_SIZE*1.2, structColor(rng))); boxes.push(box(cx, layerY+h, cz, w, wallT, CHUNK_SIZE*1.2, structColor(rng))); }
+  if(rng()<0.4){ const h2=4+rng()*6, w2=4+rng()*8; boxes.push(box(cx+10, layerY+h2/2, cz-w2/2, 5, h2, wallT, grimeColor(rng))); boxes.push(box(cx+10, layerY+h2/2, cz+w2/2, 5, h2, wallT, grimeColor(rng))); }
 }
 
 function genWall(boxes, ox, oz, layerY, rng){
-  const alongX = rng() < 0.5;
-  const h = 10 + rng()*55, len = CHUNK_SIZE*(0.5+rng()*0.45), thickness = 1.5 + rng()*4;
-  const offsetFrac = rng()*0.4;
-  const lateralFrac = rng()*0.6;
-  if(alongX){
-    boxes.push(box(ox + CHUNK_SIZE*offsetFrac + len/2, layerY + h/2, oz + CHUNK_SIZE*lateralFrac, len, h, thickness, structColor(rng)));
-    if(rng()<0.5){
-      boxes.push(box(ox + CHUNK_SIZE*offsetFrac + len/2, layerY + h/2, oz + CHUNK_SIZE*lateralFrac + 5, len, h*0.6, thickness*0.7, grimeColor(rng)));
-    }
-  } else {
-    boxes.push(box(ox + CHUNK_SIZE*lateralFrac, layerY + h/2, oz + CHUNK_SIZE*offsetFrac + len/2, thickness, h, len, structColor(rng)));
-    if(rng()<0.5){
-      boxes.push(box(ox + CHUNK_SIZE*lateralFrac + 5, layerY + h/2, oz + CHUNK_SIZE*offsetFrac + len/2, thickness*0.7, h*0.6, len, grimeColor(rng)));
-    }
-  }
+  const alongX=rng()<0.5; const h=10+rng()*55, len=CHUNK_SIZE*(0.5+rng()*0.45), thickness=1.5+rng()*4; const offsetFrac=rng()*0.4, lateralFrac=rng()*0.6;
+  if(alongX){ boxes.push(box(ox+CHUNK_SIZE*offsetFrac+len/2, layerY+h/2, oz+CHUNK_SIZE*lateralFrac, len, h, thickness, structColor(rng))); if(rng()<0.5){ boxes.push(box(ox+CHUNK_SIZE*offsetFrac+len/2, layerY+h/2, oz+CHUNK_SIZE*lateralFrac+5, len, h*0.6, thickness*0.7, grimeColor(rng))); } }
+  else { boxes.push(box(ox+CHUNK_SIZE*lateralFrac, layerY+h/2, oz+CHUNK_SIZE*offsetFrac+len/2, thickness, h, len, structColor(rng))); if(rng()<0.5){ boxes.push(box(ox+CHUNK_SIZE*lateralFrac+5, layerY+h/2, oz+CHUNK_SIZE*offsetFrac+len/2, thickness*0.7, h*0.6, len, grimeColor(rng))); } }
 }
 
 function genPillarfield(boxes, ox, oz, layerY, rng){
-  const gridN = 5 + Math.floor(rng()*4), spacing = 5 + rng()*8;
-  const cx = ox + CHUNK_SIZE*(0.1+rng()*0.6) - (gridN*spacing)/2;
-  const cz = oz + CHUNK_SIZE*(0.1+rng()*0.6) - (gridN*spacing)/2;
-  for(let i=0;i<gridN;i++){
-    for(let j=0;j<gridN;j++){
-      const h = 8 + rng()*70;
-      const pR = 0.8 + rng()*2.5;
-      const jitterX = (rng()-0.5)*6, jitterZ = (rng()-0.5)*6;
-      boxes.push(box(cx+i*spacing+jitterX, layerY + h/2, cz+j*spacing+jitterZ, pR, h, pR, structColor(rng)));
-      
-      if(rng()<0.3){
-        boxes.push(box(cx+i*spacing+jitterX, layerY + h*0.7, cz+j*spacing+jitterZ, pR*3, 0.8, pR*3, grimeColor(rng)));
-      }
-    }
-  }
-  if(rng()<0.7){
-    const platY = layerY + 6 + rng()*55;
-    boxes.push(box(cx+(gridN*spacing)/2, platY, cz+(gridN*spacing)/2, gridN*spacing+12, 1.2+rng()*3, gridN*spacing+12, structColor(rng)));
-  }
+  const gridN=5+Math.floor(rng()*4), spacing=5+rng()*8; const cx=ox+CHUNK_SIZE*(0.1+rng()*0.6)-(gridN*spacing)/2; const cz=oz+CHUNK_SIZE*(0.1+rng()*0.6)-(gridN*spacing)/2;
+  for(let i=0;i<gridN;i++){ for(let j=0;j<gridN;j++){ const h=8+rng()*70, pR=0.8+rng()*2.5, jitterX=(rng()-0.5)*6, jitterZ=(rng()-0.5)*6; boxes.push(box(cx+i*spacing+jitterX, layerY+h/2, cz+j*spacing+jitterZ, pR, h, pR, structColor(rng))); if(rng()<0.3){ boxes.push(box(cx+i*spacing+jitterX, layerY+h*0.7, cz+j*spacing+jitterZ, pR*3, 0.8, pR*3, grimeColor(rng))); } } }
+  if(rng()<0.7){ const platY=layerY+6+rng()*55; boxes.push(box(cx+(gridN*spacing)/2, platY, cz+(gridN*spacing)/2, gridN*spacing+12, 1.2+rng()*3, gridN*spacing+12, structColor(rng))); }
 }
 
 function genClutterAndPiercers(boxes, ox, oz, layerY, rng, count){
-  const clutterCount = count * 6;
-  for(let i=0;i<clutterCount;i++){
-    const s = 0.5 + rng()*5;
-    const x = ox + rng()*CHUNK_SIZE, z = oz + rng()*CHUNK_SIZE;
-    const y = layerY + rng()*rng()*55;
-    boxes.push(box(x, y+s/2, z, s*(0.3+rng()), s*(0.3+rng()*3), s*(0.3+rng()), grimeColor(rng)));
-  }
-  
-  const piercers = 3 + Math.floor(rng()*5);
-  for(let i=0;i<piercers;i++){
-    const alongX = rng()<0.5;
-    const y = layerY + 0.5 + rng()*70;
-    const thickness = 0.8 + rng()*4;
-    const width = 1.5 + rng()*10;
-    const pos = rng()*CHUNK_SIZE;
-    if(alongX){
-      boxes.push(box(ox+CHUNK_SIZE/2, y, oz+pos, CHUNK_SIZE*1.3, thickness, width, grimeColor(rng)));
-    } else {
-      boxes.push(box(ox+pos, y, oz+CHUNK_SIZE/2, width, thickness, CHUNK_SIZE*1.3, grimeColor(rng)));
-    }
-  }
+  const clutterCount=count*6;
+  for(let i=0;i<clutterCount;i++){ const s=0.5+rng()*5; const x=ox+rng()*CHUNK_SIZE, z=oz+rng()*CHUNK_SIZE; const y=layerY+rng()*rng()*55; boxes.push(box(x, y+s/2, z, s*(0.3+rng()), s*(0.3+rng()*3), s*(0.3+rng()), grimeColor(rng))); }
+  const piercers=3+Math.floor(rng()*5);
+  for(let i=0;i<piercers;i++){ const alongX=rng()<0.5; const y=layerY+0.5+rng()*70; const thickness=0.8+rng()*4, width=1.5+rng()*10, pos=rng()*CHUNK_SIZE; if(alongX){ boxes.push(box(ox+CHUNK_SIZE/2, y, oz+pos, CHUNK_SIZE*1.3, thickness, width, grimeColor(rng))); } else { boxes.push(box(ox+pos, y, oz+CHUNK_SIZE/2, width, thickness, CHUNK_SIZE*1.3, grimeColor(rng))); } }
 }
 
 function generateChunkBoxes(cx, cz, layerIndex, salt, isSpawn){
   const rng = mulberry32(hashSeed(cx, cz, layerIndex, salt));
   const ox = cx*CHUNK_SIZE, oz = cz*CHUNK_SIZE;
   const layerY = layerIndex * LAYER_HEIGHT;
-
-  // poco que abre o chao desta camada, e poco da camada de cima cuja escada
-  // desce ate aqui: ambos precisam de espaco livre neste chunk
-  const holeHere  = shaftForChunk(cx, cz, layerIndex);
+  const holeHere = shaftForChunk(cx, cz, layerIndex);
   const holeAbove = shaftForChunk(cx, cz, layerIndex + 1);
-
   const boxes = [];
   genGround(boxes, ox, oz, layerY, groundColor(rng), holeHere);
-
-  // estruturas vao para um array a parte para poderem ser filtradas sem tocar no chao
   let structs = [];
-
   if(isSpawn && layerIndex === 0){
     genBuildings(structs, ox, oz, layerY, rng, 2);
     genPillarfield(structs, ox, oz, layerY, rng);
@@ -1094,37 +1240,30 @@ function generateChunkBoxes(cx, cz, layerIndex, salt, isSpawn){
     if(rng()<0.6) genWall(structs, ox, oz, layerY, rng);
     if(rng()<0.5) genTunnel(structs, ox, oz, layerY, rng);
   }
-
-  if(holeHere || holeAbove){
-    structs = structs.filter(b =>
-      outsideShaft(b, holeHere, SHAFT_CLEAR) && outsideShaft(b, holeAbove, SHAFT_CLEAR));
-  }
+  if(holeHere || holeAbove){ structs = structs.filter(b => outsideShaft(b, holeHere, SHAFT_CLEAR) && outsideShaft(b, holeAbove, SHAFT_CLEAR)); }
   for(let i=0;i<structs.length;i++) boxes.push(structs[i]);
-
   if(holeHere) genShaft(boxes, holeHere, layerY, rng);
-
   return boxes;
 }
 
-/* ---------------- MESH BUILDING ---------------- */
 function buildChunkMesh(boxes){
   const n = boxes.length;
   const positions = new Float32Array(n*VERTS_PER_BOX*3);
-  const normals   = new Float32Array(n*VERTS_PER_BOX*3);
-  const colors    = new Float32Array(n*VERTS_PER_BOX*3);
+  const normals = new Float32Array(n*VERTS_PER_BOX*3);
+  const colors = new Float32Array(n*VERTS_PER_BOX*3);
   let vOff = 0;
   for(let bi=0; bi<n; bi++){
     const b = boxes[bi];
     for(let i=0;i<VERTS_PER_BOX;i++){
       const lx = BASE_POS[i*3], ly = BASE_POS[i*3+1], lz = BASE_POS[i*3+2];
       const idx = (vOff+i)*3;
-      positions[idx]   = b.x + lx*b.w;
+      positions[idx] = b.x + lx*b.w;
       positions[idx+1] = b.y + ly*b.h;
       positions[idx+2] = b.z + lz*b.d;
-      normals[idx]   = BASE_NORM[i*3];
+      normals[idx] = BASE_NORM[i*3];
       normals[idx+1] = BASE_NORM[i*3+1];
       normals[idx+2] = BASE_NORM[i*3+2];
-      colors[idx]   = b.color.r;
+      colors[idx] = b.color.r;
       colors[idx+1] = b.color.g;
       colors[idx+2] = b.color.b;
     }
@@ -1134,29 +1273,21 @@ function buildChunkMesh(boxes){
   geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
   geo.setAttribute('normal', new THREE.BufferAttribute(normals,3));
   geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
-
-  const mat = new THREE.MeshStandardMaterial({
-    vertexColors:true, roughness:0.88, metalness:0.35,
-    transparent:true, opacity:0
-  });
+  const mat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.88, metalness:0.35, transparent:true, opacity:0 });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.frustumCulled = true;
   return mesh;
 }
 
-/* ---------------- CHUNK STREAMING SYSTEM ---------------- */
+/* ---------------- STREAMING ---------------- */
 const chunkGroup = new THREE.Group();
 scene.add(chunkGroup);
-
 const chunkMap = new Map();
 const saltMap = new Map();
 const buildingSet = new Set();
 
 function chunkKey(cx, cz, layer){ return cx+','+cz+','+layer; }
-
-function getLayerFromY(y){
-  return Math.round(y / LAYER_HEIGHT);
-}
+function getLayerFromY(y){ return Math.round(y/LAYER_HEIGHT); }
 
 function requestChunk(cx, cz, layer){
   const key = chunkKey(cx,cz,layer);
@@ -1178,23 +1309,21 @@ function unloadChunk(key){
   c.mesh.geometry.dispose();
   c.mesh.material.dispose();
   chunkMap.delete(key);
-  saltMap.set(key, (saltMap.get(key)||0) + 1);
+  saltMap.set(key, (saltMap.get(key)||0)+1);
 }
 
 let loadingComplete = false;
 
 function nearestMissingChunks(px, py, pz, radius, forwardX, forwardZ){
   const currentLayer = getLayerFromY(py);
-  const layerRange = Math.ceil(radius / LAYER_HEIGHT) + 1;
+  const layerRange = Math.ceil(radius/LAYER_HEIGHT)+1;
   const rC = Math.ceil(radius/CHUNK_SIZE);
   const pcx = Math.floor(px/CHUNK_SIZE), pcz = Math.floor(pz/CHUNK_SIZE);
   const list = [];
-  
-  for(let layer = currentLayer - layerRange; layer <= currentLayer + layerRange; layer++){
-    const layerY = layer * LAYER_HEIGHT;
+  for(let layer=currentLayer-layerRange; layer<=currentLayer+layerRange; layer++){
+    const layerY = layer*LAYER_HEIGHT;
     const dy = layerY - py;
     if(Math.abs(dy) > radius + LAYER_HEIGHT) continue;
-    
     for(let cx=pcx-rC; cx<=pcx+rC; cx++){
       for(let cz=pcz-rC; cz<=pcz+rC; cz++){
         const centerX = cx*CHUNK_SIZE+CHUNK_SIZE/2, centerZ = cz*CHUNK_SIZE+CHUNK_SIZE/2;
@@ -1204,10 +1333,7 @@ function nearestMissingChunks(px, py, pz, radius, forwardX, forwardZ){
         const key = chunkKey(cx,cz,layer);
         if(chunkMap.has(key) || buildingSet.has(key)) continue;
         let score = dist;
-        if(forwardX!==undefined && dist>0.01){
-          const dot = (dx/dist)*forwardX + (dz/dist)*forwardZ;
-          score -= dot*40;
-        }
+        if(forwardX!==undefined && dist>0.01){ const dot = (dx/dist)*forwardX + (dz/dist)*forwardZ; score -= dot*40; }
         list.push({cx,cz,layer,score});
       }
     }
@@ -1218,86 +1344,71 @@ function nearestMissingChunks(px, py, pz, radius, forwardX, forwardZ){
 
 function updateStreaming(px, py, pz, forwardX, forwardZ, budget){
   const candidates = nearestMissingChunks(px, py, pz, ACTIVE_RADIUS, forwardX, forwardZ);
-  for(let i=0;i<Math.min(budget, candidates.length); i++){
-    requestChunk(candidates[i].cx, candidates[i].cz, candidates[i].layer);
-  }
-  
+  for(let i=0;i<Math.min(budget, candidates.length); i++){ requestChunk(candidates[i].cx, candidates[i].cz, candidates[i].layer); }
   for(const [key,c] of chunkMap){
     const centerX = c.cx*CHUNK_SIZE+CHUNK_SIZE/2, centerZ = c.cz*CHUNK_SIZE+CHUNK_SIZE/2;
-    const layerY = c.layer * LAYER_HEIGHT;
+    const layerY = c.layer*LAYER_HEIGHT;
     const dy = layerY - py;
     const dist = Math.hypot(centerX-px, centerZ-pz, dy);
-    if(dist>UNLOAD_RADIUS && c.state!=='out'){
-      c.state='out';
-    } else if(dist<=ACTIVE_RADIUS && c.state==='out'){
-      c.state='in';
-    }
+    if(dist>UNLOAD_RADIUS && c.state!=='out'){ c.state='out'; }
+    else if(dist<=ACTIVE_RADIUS && c.state==='out'){ c.state='in'; }
   }
 }
 
 function animateChunks(dt){
   for(const [key,c] of chunkMap){
-    if(c.state==='in'){
-      c.alpha = Math.min(1, c.alpha + dt/FADE_TIME);
-      c.mesh.scale.y = 0.15 + 0.85*c.alpha;
-      c.mesh.material.opacity = c.alpha;
-      if(c.alpha>=1) c.state='active';
-    } else if(c.state==='out'){
-      c.alpha = Math.max(0, c.alpha - dt/FADE_TIME);
-      c.mesh.scale.y = 0.15 + 0.85*c.alpha;
-      c.mesh.material.opacity = c.alpha;
-      if(c.alpha<=0) unloadChunk(key);
-    }
+    if(c.state==='in'){ c.alpha = Math.min(1, c.alpha+dt/FADE_TIME); c.mesh.scale.y = 0.15+0.85*c.alpha; c.mesh.material.opacity = c.alpha; if(c.alpha>=1) c.state='active'; }
+    else if(c.state==='out'){ c.alpha = Math.max(0, c.alpha-dt/FADE_TIME); c.mesh.scale.y = 0.15+0.85*c.alpha; c.mesh.material.opacity = c.alpha; if(c.alpha<=0) unloadChunk(key); }
   }
 }
 
-/* ---------------- CICLO DIA/NOITE ---------------- */
+/* ---------------- DIA/NOITE ---------------- */
 let cycleTime = 0;
-
 function updateDayNight(dt){
-  cycleTime += dt;
-  if(cycleTime > CYCLE_DURATION) cycleTime -= CYCLE_DURATION;
-  
-  const isDay = cycleTime < DAY_DURATION;
-  const progress = isDay ? cycleTime / DAY_DURATION : (cycleTime - DAY_DURATION) / NIGHT_DURATION;
-  
-  if(isDay){
+  DAY_DURATION = menuConfig.cycleDuration;
+  NIGHT_DURATION = menuConfig.cycleDuration;
+  CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
+  if(menuConfig.cycleMode === 'day'){
     scene.background = SKY_DAY.clone();
     scene.fog.color = SKY_DAY;
-  } else {
-    const darkColor = new THREE.Color(0x000000);
-    const nightFactor = Math.min(1, progress * 2);
-    scene.background = SKY_NIGHT.clone().lerp(new THREE.Color(0x050508), 1 - nightFactor * 0.5);
-    scene.fog.color = scene.background;
+    ambientLight.intensity = 0.45;
+    sunLight.intensity = 1.4;
+    sunLight.color.setHex(0xfff4de);
+    fillLight.intensity = 0.5;
+    hemisphereLight.intensity = 0.9;
+    document.getElementById('hudTimeOfDay').textContent = '☀️ DIA (FIXO)';
+    document.getElementById('hudTimeOfDay').style.color = '#ffdd44';
+    return true;
   }
-  
-  const ambientIntensity = isDay ? 0.35 : 0.005 + (1 - progress) * 0.01;
+  if(menuConfig.cycleMode === 'night'){
+    scene.background = SKY_NIGHT.clone();
+    scene.fog.color = SKY_NIGHT;
+    ambientLight.intensity = 0.005;
+    sunLight.intensity = 0.001;
+    sunLight.color.setHex(0x112233);
+    fillLight.intensity = 0.001;
+    hemisphereLight.intensity = 0.005;
+    document.getElementById('hudTimeOfDay').textContent = '🌙 NOITE (FIXO)';
+    document.getElementById('hudTimeOfDay').style.color = '#224466';
+    return false;
+  }
+  cycleTime += dt;
+  if(cycleTime > CYCLE_DURATION) cycleTime -= CYCLE_DURATION;
+  const isDay = cycleTime < DAY_DURATION;
+  const progress = isDay ? cycleTime/DAY_DURATION : (cycleTime-DAY_DURATION)/NIGHT_DURATION;
+  if(isDay){ scene.background = SKY_DAY.clone(); scene.fog.color = SKY_DAY; }
+  else { const nightFactor = Math.min(1, progress*2); scene.background = SKY_NIGHT.clone().lerp(new THREE.Color(0x050508), 1-nightFactor*0.5); scene.fog.color = scene.background; }
+  const ambientIntensity = isDay ? 0.45 : 0.005 + (1-progress)*0.01;
   ambientLight.intensity = ambientIntensity;
-  
-  const sunIntensity = isDay ? 1.2 : 0.001 + (1 - progress) * 0.005;
+  const sunIntensity = isDay ? 1.4 : 0.001 + (1-progress)*0.005;
   sunLight.intensity = sunIntensity;
-  
-  if(isDay){
-    const warmFactor = progress;
-    const color = new THREE.Color(0xfff4de);
-    color.lerp(new THREE.Color(0xff8844), warmFactor * 0.3);
-    sunLight.color = color;
-  } else {
-    sunLight.color = new THREE.Color(0x112233);
-  }
-  
-  fillLight.intensity = isDay ? 0.4 : 0.001;
-  hemisphereLight.intensity = isDay ? 0.8 : 0.005;
-  
+  if(isDay){ const warmFactor = progress; const color = new THREE.Color(0xfff4de); color.lerp(new THREE.Color(0xff8844), warmFactor*0.3); sunLight.color = color; }
+  else { sunLight.color = new THREE.Color(0x112233); }
+  fillLight.intensity = isDay ? 0.5 : 0.001;
+  hemisphereLight.intensity = isDay ? 0.9 : 0.005;
   const timeOfDayElement = document.getElementById('hudTimeOfDay');
-  if(isDay){
-    timeOfDayElement.textContent = '☀️ DIA';
-    timeOfDayElement.style.color = '#ffdd44';
-  } else {
-    timeOfDayElement.textContent = '🌙 NOITE';
-    timeOfDayElement.style.color = '#224466';
-  }
-  
+  if(isDay){ timeOfDayElement.textContent = '☀️ DIA'; timeOfDayElement.style.color = '#ffdd44'; }
+  else { timeOfDayElement.textContent = '🌙 NOITE'; timeOfDayElement.style.color = '#224466'; }
   return isDay;
 }
 
@@ -1305,26 +1416,23 @@ function updateDayNight(dt){
 function toggleFlashlight(){
   flashlightOn = !flashlightOn;
   flashlight.intensity = flashlightOn ? 80 : 0;
-  
-  const btnFlashlight = document.getElementById('btnFlashlight');
-  if(btnFlashlight){
-    btnFlashlight.classList.toggle('active', flashlightOn);
-  }
+  const btn = document.getElementById('btnFlashlight');
+  if(btn) btn.classList.toggle('active', flashlightOn);
 }
 
 function updateFlashlight(){
-  flashlight.position.copy(camera.position);
-  
+  const pos = player.position.clone();
+  pos.y += 1.2;
+  flashlight.position.copy(pos);
   const target = new THREE.Vector3(0, 0, -100);
   target.applyQuaternion(camera.quaternion);
-  target.add(camera.position);
+  target.add(pos);
   flashlight.target.position.copy(target);
-  
   flashlight.distance = 150;
   flashlight.angle = 0.48;
 }
 
-/* ---------------- PLAYER STATE ---------------- */
+/* ---------------- PLAYER ---------------- */
 const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 0) };
 let yaw = 0, pitch = 0;
 let velocityY = 0;
@@ -1346,6 +1454,45 @@ function setFlying(value){
   if(flying){ velocityY = 0; grounded = false; }
   else { velocityY = 0; }
   updateFlyUI();
+}
+
+function updateThirdPersonCamera(){
+  const pos = player.position.clone();
+  pos.y += 1.2;
+  const backDir = new THREE.Vector3(0, 0, 1);
+  backDir.applyQuaternion(camera.quaternion);
+  const camPos = pos.clone().add(backDir.multiplyScalar(THIRD_PERSON_DISTANCE));
+  camPos.y += 0.5;
+  const dirToPlayer = new THREE.Vector3().copy(pos).sub(camPos).normalize();
+  const distToPlayer = pos.distanceTo(camPos);
+  raycaster.set(camPos, dirToPlayer);
+  raycaster.far = distToPlayer + 0.5;
+  const hits = raycaster.intersectObjects(chunkGroup.children, false);
+  if(hits.length > 0 && hits[0].distance < distToPlayer){
+    const newDist = Math.max(0.5, hits[0].distance - 0.3);
+    const newPos = camPos.clone().add(dirToPlayer.clone().multiplyScalar(newDist));
+    camera.position.copy(newPos);
+  } else {
+    camera.position.copy(camPos);
+  }
+  camera.lookAt(pos);
+}
+
+function updateFirstPersonCamera(){
+  camera.position.copy(player.position);
+  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+}
+
+function updateCamera(){
+  if(cameraMode === 'third'){
+    updateThirdPersonCamera();
+    playerGroup.visible = true;
+    document.getElementById('crosshair').style.display = 'none';
+  } else {
+    updateFirstPersonCamera();
+    playerGroup.visible = false;
+    document.getElementById('crosshair').style.display = 'block';
+  }
 }
 
 function updateFlight(dt, inForward, inStrafe, ascend, descend){
@@ -1384,8 +1531,11 @@ function updateFlight(dt, inForward, inStrafe, ascend, descend){
   player.position.y += dy;
   player.position.z += dz;
 
-  camera.position.copy(player.position);
-  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+  playerGroup.position.copy(player.position);
+  playerGroup.position.y -= EYE_HEIGHT;
+  playerGroup.rotation.y = yaw;
+
+  updateCamera();
 }
 
 function updatePhysics(dt, inForward, inStrafe){
@@ -1447,8 +1597,6 @@ function updatePhysics(dt, inForward, inStrafe){
     }
   } else {
     grounded = false;
-    // o mundo e infinito para baixo: a queda entre camadas e legitima.
-    // rede de seguranca so se cair varias camadas sem encontrar nenhum chao.
     if(fallStartY === null) fallStartY = player.position.y;
     if(fallStartY - player.position.y > LAYER_HEIGHT*3){
       player.position.y = getLayerFromY(player.position.y)*LAYER_HEIGHT + EYE_HEIGHT + 2;
@@ -1457,14 +1605,17 @@ function updatePhysics(dt, inForward, inStrafe){
     }
   }
 
-  camera.position.copy(player.position);
-  camera.rotation.set(pitch, yaw, 0, 'YXZ');
+  playerGroup.position.copy(player.position);
+  playerGroup.position.y -= EYE_HEIGHT;
+  playerGroup.rotation.y = yaw;
+
+  updateCamera();
   
   const currentLayer = getLayerFromY(player.position.y);
   document.getElementById('hudLayer').textContent = currentLayer;
 }
 
-/* ---------------- INPUT: PC ---------------- */
+/* ---------------- INPUT ---------------- */
 let mode = null;
 const keys = {};
 let pointerLocked = false;
@@ -1475,6 +1626,7 @@ window.addEventListener('keydown', (e)=>{
   if(e.code==='KeyQ'){ running = true; }
   if(e.code==='KeyE' && !e.repeat){ setFlying(!flying); }
   if(e.code==='KeyF' && !e.repeat){ toggleFlashlight(); }
+  if(e.code==='KeyR' && !e.repeat){ toggleCamera(); }
 });
 window.addEventListener('keyup', (e)=>{
   keys[e.code] = false;
@@ -1503,7 +1655,7 @@ function pcInputVector(){
   return {f,s};
 }
 
-/* ---------------- INPUT: MOBILE ---------------- */
+/* ---------------- MOBILE ---------------- */
 const joystickZone = document.getElementById('joystickZone');
 const joystickKnob = document.getElementById('joystickKnob');
 const camLookZone = document.getElementById('camLookZone');
@@ -1511,6 +1663,7 @@ const btnJump = document.getElementById('btnJump');
 const btnRun = document.getElementById('btnRun');
 const btnFly = document.getElementById('btnFly');
 const btnFlashlight = document.getElementById('btnFlashlight');
+const btnCamera = document.getElementById('btnCamera');
 let flyUpHeld = false, flyDownHeld = false;
 
 let joyActive = false, joyId = null, joyVec = {x:0,y:0};
@@ -1600,27 +1753,31 @@ btnFlashlight.addEventListener('touchstart', (e)=>{
   toggleFlashlight();
 }, {passive:false});
 
+btnCamera.addEventListener('touchstart', (e)=>{
+  e.preventDefault();
+  toggleCamera();
+}, {passive:false});
+
 function mobileInputVector(){
   return { f: -joyVec.y, s: joyVec.x };
 }
 
 function updateFlyUI(){
   if(btnFly) btnFly.classList.toggle('active', flying);
-  if(btnJump) btnJump.textContent = flying ? 'SUBIR' : 'PULAR';
+  if(btnJump) btnJump.textContent = flying ? '⬆ SUBIR' : '⬆ PULAR';
   if(btnRun){
-    btnRun.textContent = flying ? 'DESCER' : 'CORRER';
+    btnRun.textContent = flying ? '⬇ DESCER' : '🏃 CORRER';
     if(flying) btnRun.classList.remove('active');
     else btnRun.classList.toggle('active', running);
   }
   if(pcHint){
     pcHint.textContent = flying
-      ? 'WASD mover · ESPAÇO subir · SHIFT descer · E parar de voar · F lanterna'
-      : 'WASD mover · ESPAÇO pular · Q correr · E voar · F lanterna';
+      ? 'WASD mover · ESPAÇO subir · SHIFT descer · E parar voar · F lanterna · R câmera'
+      : 'WASD mover · Q correr · E voar · F lanterna · R câmera · MOUSE olhar';
   }
 }
 
-/* ---------------- START / LOADING FLOW ---------------- */
-const startScreen = document.getElementById('startScreen');
+/* ---------------- START ---------------- */
 const loadingScreen = document.getElementById('loadingScreen');
 const loadingLabel = document.getElementById('loadingLabel');
 const loadingBarInner = document.getElementById('loadingBarInner');
@@ -1631,10 +1788,10 @@ const mobileControls = document.getElementById('mobileControls');
 
 function neededInitialChunkCount(){
   const rC = Math.ceil(INITIAL_RADIUS/CHUNK_SIZE);
-  const layerRange = Math.ceil(INITIAL_RADIUS/LAYER_HEIGHT) + 1;
+  const layerRange = Math.ceil(INITIAL_RADIUS/LAYER_HEIGHT)+1;
   let n=0;
   for(let layer=-layerRange; layer<=layerRange; layer++){
-    const layerY = layer*LAYER_HEIGHT;
+    const layerY=layer*LAYER_HEIGHT;
     for(let cx=-rC; cx<=rC; cx++){
       for(let cz=-rC; cz<=rC; cz++){
         const d = Math.hypot(cx*CHUNK_SIZE+CHUNK_SIZE/2, cz*CHUNK_SIZE+CHUNK_SIZE/2, layerY);
@@ -1666,17 +1823,27 @@ function initialLoadStep(){
     if(mode==='pc'){ crosshair.style.display='block'; pcHint.style.display='block'; }
     if(mode==='mobile'){ mobileControls.style.display='block'; }
     gameStartTime = performance.now();
-    
-    spawnAnomalia(player.position);
+    if(menuConfig.anomalia) spawnTornado(player.position);
+    cameraMode = 'third';
+    playerGroup.visible = true;
+    document.getElementById('hudCamMode').textContent = '3ª PESSOA';
+    document.getElementById('crosshair').style.display = 'none';
   }
 }
 
 let gameStartTime = null;
 
 function beginGame(selectedMode){
+  ACTIVE_RADIUS = menuConfig.renderDistance;
+  UNLOAD_RADIUS = ACTIVE_RADIUS + UNLOAD_MARGIN;
+  DAY_DURATION = menuConfig.cycleDuration;
+  NIGHT_DURATION = menuConfig.cycleDuration;
+  CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
+  scene.fog = new THREE.Fog(0x1a1a2e, Math.min(80, ACTIVE_RADIUS*0.1), ACTIVE_RADIUS+100);
+  
   mode = selectedMode;
-  startScreen.style.display='none';
-  loadingScreen.style.display='flex';
+  document.getElementById('menuScreen').style.display = 'none';
+  loadingScreen.style.display = 'flex';
   loadingLabel.textContent='CARREGANDO 0%';
   loadingBarInner.style.width='0%';
   player.position.set(0, EYE_HEIGHT, 0);
@@ -1686,11 +1853,36 @@ function beginGame(selectedMode){
   cycleTime = 0;
   gameOverActive = false;
   document.getElementById('gameOverScreen').style.display = 'none';
+  loadingComplete = false;
+  started = false;
+  
+  createPlayer();
+  playerGroup.position.copy(player.position);
+  playerGroup.position.y -= EYE_HEIGHT;
+  playerGroup.rotation.y = yaw;
+  playerGroup.visible = true;
+  cameraMode = 'third';
+  document.getElementById('hudCamMode').textContent = '3ª PESSOA';
+  
+  chunkMap.clear();
+  saltMap.clear();
+  while(chunkGroup.children.length > 0){
+    const child = chunkGroup.children[0];
+    chunkGroup.remove(child);
+    if(child.geometry) child.geometry.dispose();
+    if(child.material) child.material.dispose();
+  }
+  tornadoAlive = false;
+  while(tornadoGroup.children.length > 0){
+    const child = tornadoGroup.children[0];
+    tornadoGroup.remove(child);
+    if(child.geometry) child.geometry.dispose();
+    if(child.material) child.material.dispose();
+  }
+  if(tornadoGlowLight){ scene.remove(tornadoGlowLight); tornadoGlowLight = null; }
+  
   animate();
 }
-
-document.getElementById('btnPC').addEventListener('click', ()=>beginGame('pc'));
-document.getElementById('btnMobile').addEventListener('click', ()=>beginGame('mobile'));
 
 /* ---------------- HUD ---------------- */
 const hudTime = document.getElementById('hudTime');
@@ -1712,20 +1904,10 @@ function animate(){
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.06);
 
-  if(gameOverActive){
-    updateGameOver(dt);
-    renderer.render(scene, camera);
-    return;
-  }
-
-  if(!loadingComplete){
-    initialLoadStep();
-    renderer.render(scene, camera);
-    return;
-  }
+  if(gameOverActive){ updateGameOver(dt); renderer.render(scene, camera); return; }
+  if(!loadingComplete){ initialLoadStep(); renderer.render(scene, camera); return; }
 
   isDay = updateDayNight(dt);
-
   const inVec = mode==='pc' ? pcInputVector() : mobileInputVector();
   
   if(flying){
@@ -1736,17 +1918,12 @@ function animate(){
     updatePhysics(dt, inVec.f, inVec.s);
   }
 
-  // Velocidade atual do jogador
   let currentSpeed = 0;
-  if(flying){
-    currentSpeed = FLY_SPEED;
-  } else {
-    currentSpeed = WALK_SPEED * (running ? RUN_MULT : 1);
-  }
+  if(flying){ currentSpeed = FLY_SPEED; }
+  else { currentSpeed = WALK_SPEED * (running ? RUN_MULT : 1); }
 
   updateFlashlight();
-  
-  updateAnomalia(dt, player.position, isDay, currentSpeed);
+  updateTornado(dt, player.position, isDay, currentSpeed);
 
   _fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));
   updateStreaming(player.position.x, player.position.y, player.position.z, _fwd.x, _fwd.z, 2);
