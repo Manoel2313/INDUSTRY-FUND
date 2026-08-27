@@ -257,73 +257,50 @@
     pointer-events:auto;
   }
 
-  /* CUBO ROXO */
-  #gameOverScreen{
+  /* ===== TELA DE MORTE (PRETA) ===== */
+  #deathScreen{
     position:absolute;inset:0;z-index:100;
     display:none;
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    background:rgba(0,0,0,0.95);
-    gap:30px;
+    background:rgba(0,0,0,1);
+    gap:20px;
   }
-  #gameOverTitle{
+  #deathText{
     font-family:var(--font-ui);
-    font-weight:900;
-    font-size:clamp(40px,6vw,70px);
+    font-size:clamp(32px,5vw,60px);
     color:#8800ff;
-    text-transform:uppercase;
-    text-shadow:0 0 60px rgba(136,0,255,0.6), 0 0 120px rgba(136,0,255,0.3);
-    letter-spacing:15px;
-    animation: gameOverPulse 0.8s ease-in-out infinite alternate;
+    text-shadow:0 0 60px rgba(136,0,255,0.4), 0 0 120px rgba(136,0,255,0.2);
+    letter-spacing:10px;
+    animation: deathPulse 0.8s ease-in-out infinite alternate;
+    opacity:0;
   }
-  #gameOverSub{
+  #deathText.show{opacity:1;transition:opacity 0.5s;}
+  @keyframes deathPulse{
+    0%{text-shadow:0 0 40px rgba(136,0,255,0.3), 0 0 80px rgba(136,0,255,0.1);transform:scale(0.98);}
+    100%{text-shadow:0 0 80px rgba(136,0,255,0.6), 0 0 160px rgba(136,0,255,0.3);transform:scale(1.02);}
+  }
+  #deathTimer{
     font-family:var(--font-ui);
-    color:var(--gray-300);
-    font-size:clamp(14px,1.5vw,22px);
-    letter-spacing:6px;
-    text-transform:uppercase;
-    opacity:0.6;
-  }
-  #gameOverTimer{
-    font-family:var(--font-ui);
-    color:var(--accent);
-    font-size:clamp(20px,2.5vw,32px);
-    letter-spacing:5px;
-    margin-top:10px;
-    animation: timerPulse 0.5s ease-in-out infinite alternate;
-  }
-  @keyframes gameOverPulse{
-    0%{text-shadow:0 0 40px rgba(136,0,255,0.4), 0 0 80px rgba(136,0,255,0.2);transform:scale(0.98);}
-    100%{text-shadow:0 0 80px rgba(136,0,255,0.8), 0 0 160px rgba(136,0,255,0.4);transform:scale(1.02);}
-  }
-  @keyframes timerPulse{
-    0%{opacity:0.5;}
-    100%{opacity:1;}
-  }
-  #gameOverStats{
     color:var(--gray-500);
-    font-size:clamp(11px,1vw,16px);
-    letter-spacing:2px;
-    text-align:center;
-    line-height:2;
+    font-size:clamp(14px,1.5vw,22px);
+    letter-spacing:5px;
+    opacity:0.5;
   }
-  #gameOverStats span{color:var(--gray-100);}
-  .gameOverGlitch{
-    position:absolute;
-    inset:0;
-    background:repeating-linear-gradient(0deg, 
-      rgba(136,0,255,0.03) 0px,
-      rgba(136,0,255,0.03) 2px,
-      transparent 2px,
-      transparent 8px
-    );
+
+  /* ===== CUBO ROXO (3D) ===== */
+  #purpleCubeOverlay{
+    position:absolute;inset:0;z-index:90;
+    display:none;
+    background:rgba(0,0,0,0.92);
     pointer-events:none;
-    animation: glitchMove 0.1s linear infinite;
   }
-  @keyframes glitchMove{
-    0%{transform:translateY(0px);}
-    100%{transform:translateY(4px);}
+  .cube-border{
+    position:absolute;
+    border:2px solid rgba(136,0,255,0.3);
+    box-shadow:inset 0 0 60px rgba(136,0,255,0.1), 0 0 60px rgba(136,0,255,0.05);
+    pointer-events:none;
   }
 </style>
 </head>
@@ -331,17 +308,17 @@
 
 <canvas id="renderCanvas"></canvas>
 
-<!-- GAME OVER - CUBO ROXO -->
-<div id="gameOverScreen">
-  <div class="gameOverGlitch"></div>
-  <div id="gameOverTitle">⬛ CUBO ROXO</div>
-  <div id="gameOverSub">VOCÊ FOI ABSTRAÍDO</div>
-  <div id="gameOverStats">
-    TEMPO SOBREVIVIDO: <span id="goTime">00:00</span><br>
-    POSIÇÃO: <span id="goPos">0, 0, 0</span><br>
-    CAMADA: <span id="goLayer">0</span>
-  </div>
-  <div id="gameOverTimer">RETORNANDO EM 5s</div>
+<!-- TELA DE MORTE -->
+<div id="deathScreen">
+  <div id="deathText">VOCÊ FOI ABSTRAÍDO</div>
+  <div id="deathTimer">4</div>
+</div>
+
+<!-- CUBO ROXO OVERLAY -->
+<div id="purpleCubeOverlay">
+  <div class="cube-border" style="top:20%;left:20%;width:60%;height:60%;border-radius:8px;"></div>
+  <div class="cube-border" style="top:22%;left:22%;width:56%;height:56%;border-radius:8px;border-color:rgba(136,0,255,0.15);"></div>
+  <div class="cube-border" style="top:25%;left:25%;width:50%;height:50%;border-radius:8px;border-color:rgba(136,0,255,0.08);"></div>
 </div>
 
 <!-- START -->
@@ -428,7 +405,7 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - COBRA BROCA
+   INDUSTRY FUND - COBRA BROCA (CORRIGIDA)
    ====================================================================== */
 
 /* ===== MENU ===== */
@@ -513,14 +490,14 @@ const STAIR_RADIUS  = 11;
 const STEP_RISE     = 0.6;
 const STEP_RUN      = 1.5;
 
-// ===== COBRA BROCA =====
-const COBRA_SEGMENTS = 40;       // 40 segmentos = 200m (5m cada)
+// ===== COBRA BROCA (MELHORADA) =====
+const COBRA_SEGMENTS = 40;
 const COBRA_SEGMENT_LENGTH = 5;
-const COBRA_HEIGHT = 15;
-const COBRA_WIDTH = 8;
+const COBRA_HEIGHT = 18;
+const COBRA_WIDTH = 10;
 const COBRA_SPAWN_DIST = 900;
-const COBRA_DEATH_RADIUS = 15;
-const COBRA_DESTROY_RADIUS = 25;
+const COBRA_DEATH_RADIUS = 12;
+const COBRA_DESTROY_RADIUS = 30;
 const COBRA_SPEED_MULT = 0.9;
 
 // ===== DESTRUIÇÃO COM FADE =====
@@ -535,7 +512,8 @@ const MAX_FALL_SPEED = 55;
 
 /* ===== MODO DE CÂMERA ===== */
 let cameraMode = 'third';
-const THIRD_PERSON_DISTANCE = 5.0;
+const THIRD_PERSON_DISTANCE = 6.0;
+const THIRD_PERSON_HEIGHT = 1.8;
 
 function toggleCamera(){
   cameraMode = cameraMode === 'third' ? 'first' : 'third';
@@ -771,72 +749,76 @@ function createPlayer(){
   playerGroup.visible = true;
 }
 
-/* ---------------- GAME OVER - CUBO ROXO ---------------- */
-let gameOverActive = false;
-let gameOverTimer = 0;
-const GAME_OVER_RESPAWN_TIME = 5;
+/* ===== TELA DE MORTE (PRETA) ===== */
+let deathActive = false;
+let deathTimer = 0;
+const DEATH_DURATION = 4;
+let deathCallback = null;
 
-function showGameOver(playerPos, elapsed){
-  gameOverActive = true;
-  gameOverTimer = 0;
+function showDeathScreen(callback){
+  deathActive = true;
+  deathTimer = 0;
+  const screen = document.getElementById('deathScreen');
+  screen.style.display = 'flex';
+  const text = document.getElementById('deathText');
+  text.classList.remove('show');
+  document.getElementById('deathTimer').textContent = '4';
+  deathCallback = callback || null;
+  
   document.getElementById('hud').style.display = 'none';
   document.getElementById('crosshair').style.display = 'none';
   document.getElementById('pcHint').style.display = 'none';
   document.getElementById('mobileControls').style.display = 'none';
-  const screen = document.getElementById('gameOverScreen');
-  screen.style.display = 'flex';
-  document.getElementById('gameOverSub').textContent = 'VOCÊ FOI ABSTRAÍDO';
-  const s = Math.floor(elapsed/1000);
-  const mm = String(Math.floor(s/60)).padStart(2,'0');
-  const ss = String(s%60).padStart(2,'0');
-  document.getElementById('goTime').textContent = mm+':'+ss;
-  document.getElementById('goPos').textContent = 
-    playerPos.x.toFixed(1)+', '+(playerPos.y-EYE_HEIGHT).toFixed(1)+', '+playerPos.z.toFixed(1);
-  document.getElementById('goLayer').textContent = getLayerFromY(playerPos.y);
+  
+  // Mostra texto com delay
+  setTimeout(() => {
+    text.classList.add('show');
+  }, 200);
+  
   started = false;
 }
 
-function updateGameOver(dt){
-  if(!gameOverActive) return;
-  gameOverTimer += dt;
-  const remaining = Math.ceil(GAME_OVER_RESPAWN_TIME - gameOverTimer);
-  document.getElementById('gameOverTimer').textContent = `RETORNANDO EM ${remaining}s`;
-  if(gameOverTimer >= GAME_OVER_RESPAWN_TIME){
-    gameOverActive = false;
-    document.getElementById('gameOverScreen').style.display = 'none';
-    document.getElementById('startScreen').style.display = 'flex';
-    loadingComplete = false;
-    chunkMap.clear();
-    saltMap.clear();
-    destroyedObjects.length = 0;
-    while(chunkGroup.children.length > 0){
-      const child = chunkGroup.children[0];
-      chunkGroup.remove(child);
-      if(child.geometry) child.geometry.dispose();
-      if(child.material) child.material.dispose();
+function updateDeathScreen(dt){
+  if(!deathActive) return;
+  deathTimer += dt;
+  const remaining = Math.ceil(DEATH_DURATION - deathTimer);
+  document.getElementById('deathTimer').textContent = remaining;
+  
+  if(deathTimer >= DEATH_DURATION){
+    deathActive = false;
+    document.getElementById('deathScreen').style.display = 'none';
+    
+    // Ativa o cubo roxo
+    document.getElementById('purpleCubeOverlay').style.display = 'block';
+    document.getElementById('hud').style.display = 'block';
+    if(selectedMode === 'pc'){
+      document.getElementById('crosshair').style.display = 'block';
+      document.getElementById('pcHint').style.display = 'block';
     }
-    cobraAlive = false;
-    while(cobraGroup.children.length > 0){
-      const child = cobraGroup.children[0];
-      cobraGroup.remove(child);
-      if(child.geometry) child.geometry.dispose();
-      if(child.material) child.material.dispose();
+    if(selectedMode === 'mobile'){
+      document.getElementById('mobileControls').style.display = 'block';
     }
+    
+    // Reseta posição do jogador dentro do cubo
     player.position.set(0, EYE_HEIGHT, 0);
+    playerGroup.position.copy(player.position);
+    playerGroup.position.y -= EYE_HEIGHT;
+    playerGroup.rotation.y = yaw;
+    grounded = true;
+    velocityY = 0;
     running = false;
     flying = false;
     updateFlyUI();
-    started = false;
-    loadingComplete = false;
+    started = true;
+    
+    if(deathCallback) deathCallback();
   }
 }
 
 /* ===== DESTRUIÇÃO COM FADE ===== */
 function destroyWithFade(mesh){
-  // Já está sendo destruído?
   if(destroyedObjects.some(d => d.mesh === mesh)) return;
   
-  // Salva material original
   const origColor = mesh.material.color.clone();
   const origEmissive = mesh.material.emissive ? mesh.material.emissive.clone() : null;
   const origOpacity = mesh.material.opacity || 1;
@@ -847,7 +829,8 @@ function destroyWithFade(mesh){
     duration: FADE_DURATION,
     origColor: origColor,
     origEmissive: origEmissive,
-    origOpacity: origOpacity
+    origOpacity: origOpacity,
+    parent: mesh.parent
   });
 }
 
@@ -858,12 +841,11 @@ function updateDestroyedFade(dt){
     const progress = d.timer / d.duration;
     
     if(d.mesh && d.mesh.material){
-      // Fica roxo e vai sumindo
       const purple = new THREE.Color(0x8800ff);
-      d.mesh.material.color.lerp(purple, progress * 0.8);
+      d.mesh.material.color.lerp(purple, progress * 0.9);
       if(d.mesh.material.emissive){
-        d.mesh.material.emissive.lerp(purple, progress * 0.5);
-        d.mesh.material.emissiveIntensity = 1 + progress * 2;
+        d.mesh.material.emissive.lerp(purple, progress * 0.7);
+        d.mesh.material.emissiveIntensity = 1 + progress * 3;
       }
       d.mesh.material.opacity = 1 - progress;
       d.mesh.material.transparent = true;
@@ -871,9 +853,8 @@ function updateDestroyedFade(dt){
     }
     
     if(progress >= 1){
-      // Remove completamente
-      if(d.mesh && d.mesh.parent){
-        d.mesh.parent.remove(d.mesh);
+      if(d.mesh && d.parent){
+        d.parent.remove(d.mesh);
         if(d.mesh.geometry) d.mesh.geometry.dispose();
         if(d.mesh.material) d.mesh.material.dispose();
       }
@@ -882,7 +863,7 @@ function updateDestroyedFade(dt){
   }
 }
 
-/* ===== COBRA BROCA ===== */
+/* ===== COBRA BROCA (MELHORADA - ROBUSTA E MACABRA) ===== */
 let cobraGroup = new THREE.Group();
 scene.add(cobraGroup);
 let cobraAlive = false;
@@ -903,71 +884,153 @@ function createCobra(){
   cobraSegments = [];
   cobraPositions = [];
 
-  // CORPO DA COBRA (segmentos)
   const totalLength = COBRA_SEGMENTS * COBRA_SEGMENT_LENGTH;
   const radius = COBRA_WIDTH / 2;
   
+  // CORPO DA COBRA - segmentos maciços e robustos
   for(let i = 0; i < COBRA_SEGMENTS; i++){
     const t = i / COBRA_SEGMENTS;
-    const segRadius = radius * (1 - t * 0.3);
-    const segHeight = COBRA_HEIGHT * (1 - t * 0.2);
+    const segRadius = radius * (1 - t * 0.25);
+    const segHeight = COBRA_HEIGHT * (1 - t * 0.15);
     
-    // Corpo principal (cilindro)
-    const segGeo = new THREE.CylinderGeometry(segRadius * 0.6, segRadius, segHeight, 8);
-    const color = new THREE.Color().setHSL(0.75 + t * 0.1, 0.8, 0.3 + t * 0.2);
+    // Corpo principal - cilindro grosso
+    const segGeo = new THREE.CylinderGeometry(segRadius * 0.7, segRadius, segHeight, 12);
+    const colorVal = 0.75 + t * 0.08;
     const segMat = new THREE.MeshStandardMaterial({
-      color: color,
-      emissive: color,
+      color: new THREE.Color().setHSL(colorVal, 0.9, 0.25 + t * 0.15),
+      emissive: new THREE.Color().setHSL(colorVal + 0.1, 0.8, 0.1),
       emissiveIntensity: 0.3 + t * 0.2,
-      roughness: 0.3,
-      metalness: 0.7
+      roughness: 0.25,
+      metalness: 0.8
     });
     const seg = new THREE.Mesh(segGeo, segMat);
     seg.castShadow = true;
     
-    // Detalhes da broca (anéis)
+    // ANÉIS DE METAL (detalhes macabros)
     const ringMat = new THREE.MeshStandardMaterial({
-      color: 0x8888ff,
-      emissive: 0x4444ff,
-      emissiveIntensity: 0.5,
+      color: 0x6644aa,
+      emissive: 0x442288,
+      emissiveIntensity: 0.3 + Math.sin(i * 0.5) * 0.2,
       metalness: 0.9,
       roughness: 0.2
     });
-    const ringGeo = new THREE.TorusGeometry(segRadius * 0.7, 0.3, 6, 8);
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.position.y = -segHeight/2 + 0.5;
-    ring.rotation.x = Math.PI/2;
-    seg.add(ring);
+    const ringGeo = new THREE.TorusGeometry(segRadius * 0.75, 0.4, 8, 12);
+    const ring1 = new THREE.Mesh(ringGeo, ringMat);
+    ring1.position.y = -segHeight/2 + 0.8;
+    ring1.rotation.x = Math.PI/2;
+    seg.add(ring1);
     
     const ring2 = new THREE.Mesh(ringGeo, ringMat);
-    ring2.position.y = segHeight/2 - 0.5;
+    ring2.position.y = segHeight/2 - 0.8;
     ring2.rotation.x = Math.PI/2;
     seg.add(ring2);
     
-    // Olhos da cabeça
+    // ESPINHOS/LÂMINAS (detalhes macabros)
+    const spikeMat = new THREE.MeshStandardMaterial({
+      color: 0x8833aa,
+      emissive: 0x441166,
+      emissiveIntensity: 0.2,
+      metalness: 0.7,
+      roughness: 0.3
+    });
+    for(let s = 0; s < 4; s++){
+      const angle = (s / 4) * Math.PI * 2 + i * 0.5;
+      const spike = new THREE.Mesh(
+        new THREE.ConeGeometry(0.4, 1.2 + Math.sin(i * 0.3) * 0.5, 4),
+        spikeMat
+      );
+      spike.position.set(
+        Math.cos(angle) * segRadius * 0.85,
+        (Math.random() - 0.5) * segHeight * 0.6,
+        Math.sin(angle) * segRadius * 0.85
+      );
+      spike.rotation.x = Math.PI/2 + Math.sin(i + angle) * 0.3;
+      spike.rotation.z = angle;
+      seg.add(spike);
+    }
+    
+    // CABEÇA - especial
     if(i === 0){
+      // Corpo da cabeça (maior)
+      const headMat = new THREE.MeshStandardMaterial({
+        color: 0x441166,
+        emissive: 0x8822ff,
+        emissiveIntensity: 0.5,
+        roughness: 0.2,
+        metalness: 0.9
+      });
+      const headGeo = new THREE.SphereGeometry(segRadius * 1.1, 12, 12);
+      const headMesh = new THREE.Mesh(headGeo, headMat);
+      headMesh.scale.set(1, 1.2, 1.4);
+      headMesh.position.z = segRadius * 0.6;
+      seg.add(headMesh);
+      
+      // MANDÍBULAS
+      const jawMat = new THREE.MeshStandardMaterial({
+        color: 0x222233,
+        emissive: 0x331144,
+        emissiveIntensity: 0.2,
+        metalness: 0.5,
+        roughness: 0.4
+      });
+      for(let side of [-1, 1]){
+        const jaw = new THREE.Mesh(
+          new THREE.ConeGeometry(1.2, 3, 6),
+          jawMat
+        );
+        jaw.position.set(side * 2.5, -1, segRadius * 1.8);
+        jaw.rotation.x = 0.3;
+        jaw.rotation.z = side * 0.3;
+        seg.add(jaw);
+      }
+      
+      // OLHOS ROXOS (7 olhos)
       const eyeMat = new THREE.MeshStandardMaterial({
-        color: 0xff00ff,
-        emissive: 0xff00ff,
-        emissiveIntensity: 2,
+        color: 0x8800ff,
+        emissive: 0xcc44ff,
+        emissiveIntensity: 3,
         roughness: 0.1
       });
       const eyeGeo = new THREE.SphereGeometry(1.2, 8, 8);
-      for(let side of [-1, 1]){
+      const eyePositions = [
+        [-3, 3, 5], [3, 3, 5],
+        [-4, 0, 6], [4, 0, 6],
+        [-2.5, -2, 6], [2.5, -2, 6],
+        [0, 1, 7]
+      ];
+      for(const pos of eyePositions){
         const eye = new THREE.Mesh(eyeGeo, eyeMat);
-        eye.position.set(side * 3.5, 2, 4);
+        eye.position.set(pos[0], pos[1] + 1, pos[2]);
         seg.add(eye);
       }
       
-      // Brilho da cabeça
+      // GLOW DA CABEÇA
       const glowMat = new THREE.MeshBasicMaterial({
         color: 0x8800ff,
         transparent: true,
-        opacity: 0.2
+        opacity: 0.15
       });
-      const glow = new THREE.Mesh(new THREE.SphereGeometry(5, 8, 8), glowMat);
-      glow.position.set(0, 0, 3);
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(segRadius * 2, 8, 8), glowMat);
+      glow.position.set(0, 1, segRadius * 0.8);
       seg.add(glow);
+    }
+    
+    // CAUDA - afunilada
+    if(i === COBRA_SEGMENTS - 1){
+      const tailMat = new THREE.MeshStandardMaterial({
+        color: 0x221133,
+        emissive: 0x441166,
+        emissiveIntensity: 0.1,
+        roughness: 0.5,
+        metalness: 0.3
+      });
+      const tail = new THREE.Mesh(
+        new THREE.ConeGeometry(segRadius * 0.3, 4, 6),
+        tailMat
+      );
+      tail.position.z = -segHeight * 0.8;
+      tail.rotation.x = Math.PI/2;
+      seg.add(tail);
     }
     
     cobraGroup.add(seg);
@@ -975,8 +1038,8 @@ function createCobra(){
     cobraPositions.push(new THREE.Vector3(0, 0, 0));
   }
 
-  // LUZ GLOW
-  cobraGlowLight = new THREE.PointLight(0x8800ff, 0, 80);
+  // LUZ GLOW PULSANTE (mais forte)
+  cobraGlowLight = new THREE.PointLight(0x8800ff, 0, 100);
   cobraGlowLight.position.set(0, 0, 0);
   cobraGroup.add(cobraGlowLight);
 
@@ -984,10 +1047,9 @@ function createCobra(){
   cobraAlive = true;
 }
 
-function updateCobraBody(headPos, playerPos){
+function updateCobraBody(headPos){
   if(!cobraAlive) return;
   
-  // Atualiza posições dos segmentos (corpo segue a cabeça)
   cobraPositions[0].copy(headPos);
   
   for(let i = 1; i < COBRA_SEGMENTS; i++){
@@ -996,33 +1058,28 @@ function updateCobraBody(headPos, playerPos){
     const dir = new THREE.Vector3().copy(prev).sub(curr);
     const dist = dir.length();
     
-    if(dist > COBRA_SEGMENT_LENGTH * 0.1){
+    if(dist > COBRA_SEGMENT_LENGTH * 0.05){
       dir.normalize();
       curr.copy(prev).sub(dir.multiplyScalar(COBRA_SEGMENT_LENGTH));
     }
   }
   
-  // Atualiza posição e rotação de cada segmento
   for(let i = 0; i < COBRA_SEGMENTS; i++){
     const seg = cobraSegments[i];
     const pos = cobraPositions[i];
     seg.position.copy(pos);
     
-    // Rotação: olha para o próximo segmento ou para o player (cabeça)
     if(i < COBRA_SEGMENTS - 1){
       const next = cobraPositions[i+1];
       const dir = new THREE.Vector3().copy(next).sub(pos);
       if(dir.length() > 0.01){
-        const lookTarget = pos.clone().add(dir);
-        seg.lookAt(lookTarget);
+        seg.lookAt(pos.clone().add(dir));
       }
     } else {
-      // Cauda
       const prev = cobraPositions[i-1];
       const dir = new THREE.Vector3().copy(pos).sub(prev);
       if(dir.length() > 0.01){
-        const lookTarget = pos.clone().add(dir);
-        seg.lookAt(lookTarget);
+        seg.lookAt(pos.clone().add(dir));
       }
     }
   }
@@ -1031,22 +1088,23 @@ function updateCobraBody(headPos, playerPos){
 function animateCobra(dt, isDay){
   animTime += dt;
   
-  // Pulsação do glow
   if(cobraGlowLight){
-    cobraGlowLight.intensity = 10 + Math.sin(animTime * 3) * 5;
-    const hue = (Math.sin(animTime * 0.5) * 0.5 + 0.5) * 0.3 + 0.6;
+    cobraGlowLight.intensity = 15 + Math.sin(animTime * 3) * 8;
+    const hue = (Math.sin(animTime * 0.4) * 0.3 + 0.6);
     cobraGlowLight.color.setHSL(hue, 1, 0.5);
+    cobraGlowLight.distance = 100 + Math.sin(animTime * 0.5) * 20;
   }
   
-  // Anima os olhos da cabeça
-  if(cobraSegments.length > 0){
-    const head = cobraSegments[0];
-    head.children.forEach(child => {
-      if(child.material && child.material.emissiveIntensity !== undefined){
-        child.material.emissiveIntensity = 2 + Math.sin(animTime * 4) * 0.5;
+  // Anima olhos e detalhes
+  cobraSegments.forEach((seg, index) => {
+    seg.children.forEach(child => {
+      if(child.material && child.material.emissiveIntensity !== undefined && child.material.emissive){
+        if(child.geometry.type === 'SphereGeometry' && child.geometry.parameters.radius === 1.2){
+          child.material.emissiveIntensity = 2 + Math.sin(animTime * 4 + index) * 1.5;
+        }
       }
     });
-  }
+  });
 }
 
 function spawnCobra(playerPos){
@@ -1062,13 +1120,41 @@ function spawnCobra(playerPos){
   cobraAlive = true;
   animTime = 0;
   
-  // Inicializa posições do corpo
   for(let i = 0; i < COBRA_SEGMENTS; i++){
     cobraPositions[i] = new THREE.Vector3(
-      spawnX + i * COBRA_SEGMENT_LENGTH,
+      spawnX - i * COBRA_SEGMENT_LENGTH,
       layerY + 2,
       spawnZ
     );
+  }
+}
+
+// DESTRÓI TUDO NO CAMINHO
+function destroyEverythingInRadius(center, radius, playerLayer){
+  const toRemove = [];
+  for(const [key, c] of chunkMap){
+    const cx = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
+    const cz = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
+    const cy = c.layer * LAYER_HEIGHT;
+    const d = Math.hypot(cx - center.x, cz - center.z, cy - center.y);
+    
+    const isGround = Math.abs(cy - (c.layer * LAYER_HEIGHT)) < 2;
+    
+    if(d < radius && c.state === 'active' && !isGround){
+      toRemove.push(key);
+    }
+    if(isGround && c.layer === playerLayer + 1 && d < radius){
+      toRemove.push(key);
+    }
+  }
+  
+  for(const key of toRemove){
+    const c = chunkMap.get(key);
+    if(c){
+      destroyWithFade(c.mesh);
+      chunkMap.delete(key);
+      saltMap.set(key, (saltMap.get(key)||0) + 1);
+    }
   }
 }
 
@@ -1086,7 +1172,7 @@ function updateCobra(dt, playerPos, isDay, playerSpeed){
     }
     return;
   }
-  if(!cobraAlive || gameOverActive) return;
+  if(!cobraAlive || deathActive) return;
   
   animateCobra(dt, isDay);
   
@@ -1098,7 +1184,6 @@ function updateCobra(dt, playerPos, isDay, playerSpeed){
   const currentLayer = Math.round(playerPos.y / LAYER_HEIGHT);
   const cobraLayer = Math.round(cobraHead.y / LAYER_HEIGHT);
   
-  // Se o jogador mudou de camada, a cabeça sobe/desce
   if(currentLayer !== cobraLayer){
     cobraHead.y += (currentLayer * LAYER_HEIGHT + 2 - cobraHead.y) * 0.05;
   }
@@ -1108,9 +1193,8 @@ function updateCobra(dt, playerPos, isDay, playerSpeed){
     return;
   }
   
-  // Velocidade da cobra = velocidade do jogador * 0.9
   const speed = playerSpeed * COBRA_SPEED_MULT;
-  const moveSpeed = Math.min(speed * dt * 1.2, dist * 0.3);
+  const moveSpeed = Math.min(speed * dt * 1.3, dist * 0.35);
   
   if(dist > 1){
     const normX = dx / dist;
@@ -1124,43 +1208,45 @@ function updateCobra(dt, playerPos, isDay, playerSpeed){
     cobraGroup.position.copy(cobraHead);
   }
   
-  // Atualiza o corpo (segue a cabeça)
-  updateCobraBody(cobraHead, playerPos);
+  updateCobraBody(cobraHead);
   
-  // ===== ZONA DE DESTRUIÇÃO =====
+  // ===== DESTRUIÇÃO =====
   const destroyRadius = COBRA_DESTROY_RADIUS;
   const center = cobraHead.clone();
+  center.y = 0;
+  destroyEverythingInRadius(center, destroyRadius, currentLayer);
   
-  // Destroi chunks na área
-  for(const [key, c] of chunkMap){
-    const cx = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
-    const cz = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
-    const cy = c.layer * LAYER_HEIGHT;
-    const d = Math.hypot(cx - center.x, cz - center.z, cy - center.y);
-    
-    const isGround = Math.abs(cy - (c.layer * LAYER_HEIGHT)) < 2;
-    const isPlayerLayer = c.layer === currentLayer;
-    
-    if(d < destroyRadius && c.state === 'active' && !isGround){
-      // Destruição com fade
-      const mesh = c.mesh;
-      destroyWithFade(mesh);
-      chunkMap.delete(key);
-      saltMap.set(key, (saltMap.get(key)||0) + 1);
-    }
-    
-    // Destrói o telhado se o jogador subiu
-    if(isGround && c.layer === currentLayer + 1 && d < destroyRadius){
-      const mesh = c.mesh;
-      destroyWithFade(mesh);
-      chunkMap.delete(key);
-      saltMap.set(key, (saltMap.get(key)||0) + 1);
+  // Também destrói ao longo do corpo
+  for(let i = 5; i < COBRA_SEGMENTS; i += 5){
+    const bodyPos = cobraPositions[i] || cobraHead;
+    const bodyCenter = bodyPos.clone();
+    bodyCenter.y = 0;
+    destroyEverythingInRadius(bodyCenter, destroyRadius * 0.6, currentLayer);
+  }
+  
+  // ===== ZONA DE MORTE (CORPO TODO É HITBOX) =====
+  let hit = false;
+  // Cabeça
+  if(dist < COBRA_DEATH_RADIUS) hit = true;
+  
+  // Corpo
+  for(let i = 1; i < COBRA_SEGMENTS; i++){
+    const segPos = cobraPositions[i];
+    if(segPos){
+      const segDist = Math.hypot(
+        playerPos.x - segPos.x,
+        playerPos.y - segPos.y,
+        playerPos.z - segPos.z
+      );
+      if(segDist < COBRA_DEATH_RADIUS * 0.8) hit = true;
     }
   }
   
-  // ===== ZONA DE MORTE =====
-  if(dist < COBRA_DEATH_RADIUS && !gameOverActive){
-    showGameOver(playerPos, performance.now() - gameStartTime);
+  if(hit && !deathActive){
+    showDeathScreen(() => {
+      // Callback quando entrar no cubo roxo
+      document.getElementById('purpleCubeOverlay').style.display = 'block';
+    });
   }
 }
 
@@ -1393,7 +1479,6 @@ function requestChunk(cx, cz, layer){
 function unloadChunk(key){
   const c = chunkMap.get(key);
   if(!c) return;
-  // Se não está em fade, remove direto
   if(!destroyedObjects.some(d => d.mesh === c.mesh)){
     chunkGroup.remove(c.mesh);
     c.mesh.geometry.dispose();
@@ -1451,7 +1536,6 @@ function animateChunks(dt){
     if(c.state==='in'){ c.alpha = Math.min(1, c.alpha+dt/FADE_TIME); c.mesh.scale.y = 0.15+0.85*c.alpha; c.mesh.material.opacity = c.alpha; if(c.alpha>=1) c.state='active'; }
     else if(c.state==='out'){ c.alpha = Math.max(0, c.alpha-dt/FADE_TIME); c.mesh.scale.y = 0.15+0.85*c.alpha; c.mesh.material.opacity = c.alpha; if(c.alpha<=0) unloadChunk(key); }
   }
-  // Atualiza objetos destruídos com fade
   updateDestroyedFade(dt);
 }
 
@@ -1552,12 +1636,19 @@ function setFlying(value){
 function updateThirdPersonCamera(){
   const pos = player.position.clone();
   pos.y += 1.2;
+  
+  // Direção para trás do jogador
   const backDir = new THREE.Vector3(0, 0, 1);
   backDir.applyQuaternion(camera.quaternion);
+  
+  // Posição da câmera (atrás e levemente acima)
   const camPos = pos.clone().add(backDir.multiplyScalar(THIRD_PERSON_DISTANCE));
-  camPos.y += 0.5;
+  camPos.y += THIRD_PERSON_HEIGHT;
+  
+  // Colisão da câmera
   const dirToPlayer = new THREE.Vector3().copy(pos).sub(camPos).normalize();
   const distToPlayer = pos.distanceTo(camPos);
+  
   raycaster.set(camPos, dirToPlayer);
   raycaster.far = distToPlayer + 0.5;
   const hits = raycaster.intersectObjects(chunkGroup.children, false);
@@ -1568,6 +1659,7 @@ function updateThirdPersonCamera(){
   } else {
     camera.position.copy(camPos);
   }
+  
   camera.lookAt(pos);
 }
 
@@ -1944,8 +2036,9 @@ function beginGame(selectedMode){
   yaw = 0; pitch = 0;
   camera.position.copy(player.position);
   cycleTime = 0;
-  gameOverActive = false;
-  document.getElementById('gameOverScreen').style.display = 'none';
+  deathActive = false;
+  document.getElementById('deathScreen').style.display = 'none';
+  document.getElementById('purpleCubeOverlay').style.display = 'none';
   loadingComplete = false;
   started = false;
   destroyedObjects.length = 0;
@@ -1998,7 +2091,7 @@ function animate(){
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.06);
 
-  if(gameOverActive){ updateGameOver(dt); renderer.render(scene, camera); return; }
+  if(deathActive){ updateDeathScreen(dt); renderer.render(scene, camera); return; }
   if(!loadingComplete){ initialLoadStep(); renderer.render(scene, camera); return; }
 
   isDay = updateDayNight(dt);
