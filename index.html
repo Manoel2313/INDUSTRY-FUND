@@ -272,7 +272,6 @@
     pointer-events:auto;
   }
 
-  /* ===== TELA DE MORTE ===== */
   #deathScreen{
     position:absolute;inset:0;z-index:100;
     display:none;
@@ -304,7 +303,6 @@
     opacity:0.5;
   }
 
-  /* ===== CUBO ROXO ===== */
   #purpleCubeOverlay{
     position:absolute;inset:0;z-index:90;
     display:none;
@@ -318,7 +316,6 @@
     pointer-events:none;
   }
 
-  /* ===== BARRA DE DESTRUIÇÃO ===== */
   #destructBarWrap{
     position:absolute;top:58%;left:50%;transform:translateX(-50%);
     width:220px;z-index:25;display:none;
@@ -330,7 +327,6 @@
   #destructBarOuter{width:100%;height:10px;background:rgba(0,0,0,0.5);border:1px solid var(--gray-700);border-radius:4px;overflow:hidden;}
   #destructBarInner{width:0%;height:100%;background:#dd3322;}
 
-  /* ===== PAINEL DE INVENTARIO / CRAFT ===== */
   #inventoryPanel{
     position:absolute;inset:0;z-index:95;
     display:none;
@@ -395,7 +391,6 @@
     text-shadow:0 1px 3px rgba(0,0,0,0.9);z-index:22;opacity:0;transition:opacity .3s;pointer-events:none;
   }
 
-  /* ===== TUTORIAL ===== */
   #tutorialOverlay{
     position:absolute;inset:0;z-index:200;
     display:none;
@@ -483,6 +478,15 @@
     text-shadow:0 0 30px rgba(255,0,0,0.4);
     display:none;
     letter-spacing:4px;
+  }
+  #tutorialProgress{
+    position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
+    color:var(--gray-300);
+    font-size:14px;
+    font-family:var(--font-ui);
+    letter-spacing:2px;
+    display:none;
+    text-shadow:0 1px 3px rgba(0,0,0,0.9);
   }
 </style>
 </head>
@@ -578,12 +582,12 @@
   <button id="btnPlaceConfirm">CONFIRMAR POSIÇÃO</button>
 </div>
 
-<!-- TUTORIAL OVERLAY -->
 <div id="tutorialOverlay">
   <div id="tutorialTimer"></div>
   <div id="tutorialMonsterCounter"></div>
   <div id="tutorialBuildTimer"></div>
   <div id="tutorialSurviveTimer"></div>
+  <div id="tutorialProgress"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -592,30 +596,24 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - ZONA DE ANOMALIAS
+   INDUSTRY FUND - TUTORIAL EM CORREDOR
    ====================================================================== */
 
 // ===== VARIÁVEIS DE CONTROLE =====
 let isTutorialMode = false;
-let tutorialStep = 0;
-let tutorialMessages = [];
+let tutorialPhase = 'idle';
+let tutorialDestroyCount = 0;
+let tutorialTotalToDestroy = 25;
+let tutorialBuildTime = 0;
+let tutorialSurviveTime = 0;
 let tutorialComplete = false;
+let tutorialEnteredCube = false;
 let tutorialMonstersSpawned = false;
 let tutorialMonstersKilled = 0;
-let tutorialSurviveTime = 0;
-let tutorialBuildTime = 0;
-let tutorialPhase = 'idle'; // 'walk', 'jump', 'runjump', 'destroy', 'build', 'prepare', 'survive', 'done'
-let tutorialDestroyCount = 0;
-let tutorialTotalToDestroy = 18;
-let tutorialBuildTimer = 120; // 2 minutos
-let tutorialSurviveTimer = 40; // 40 segundos
-let tutorialMonsters = [];
-let tutorialMonsterGroup = new THREE.Group();
+let tutorialMessageTimeout = null;
 
 // ===== MENU =====
-let menuConfig = {
-  difficulty: 1
-};
+let menuConfig = { difficulty: 1 };
 let selectedMode = null;
 let isInPurpleCube = false;
 
@@ -973,7 +971,6 @@ function updateDeathScreen(dt){
     deathActive = false;
     document.getElementById('deathScreen').style.display = 'none';
     if(isTutorialMode){
-      // No tutorial, volta ao início do tutorial
       resetTutorial();
     } else {
       enterPurpleCube();
@@ -1026,7 +1023,6 @@ const COLOR_WEIGHTS = [
 const COLOR_HEX = { verde:0x2ecc40, azul:0x2277dd, vermelho:0xdd3322, amarelo:0xeecc22, roxo:0x8833cc, marrom:0x6b4a2a, preto:0x1a1a1a, branco:0xf0f0f0 };
 
 let inventory = {};
-let isTutorialInventory = false;
 
 function randomShape(){ return SHAPES[Math.floor(Math.random()*SHAPES.length)]; }
 function randomColor(){
@@ -1049,7 +1045,7 @@ function rewardBlocks(duration, isTutorial){
   else if (duration >= 10) count = 2;
   else count = 1;
   
-  if(isTutorial) count = 50; // Tutorial ganha 50 blocos por destruição
+  if(isTutorial) count = 50;
   
   for(let i=0;i<count;i++){ addBlock(randomShape(), randomColor()); }
   showToast('+'+count+' blocos coletados');
@@ -1167,7 +1163,7 @@ document.getElementById('btnInventory').addEventListener('touchstart', (e)=>{
   inventoryPanelOpen ? closeInventoryPanel() : openInventoryPanel();
 }, {passive:false});
 
-/* ===== POSICIONAMENTO DE ESTRUTURAS ===== */
+/* ===== POSICIONAMENTO ===== */
 const BUILD_SCALE = 1.7;
 let placingType = null;
 const placementHintEl = document.getElementById('placementHint');
@@ -1320,14 +1316,9 @@ function attemptPlacement(){
   showToast(RECIPES[placingType].label+' construído!');
   placingType = null;
   updatePlacementHint();
-  
-  // Se for tutorial, verifica se construiu algo
-  if(isTutorialMode && tutorialPhase === 'build'){
-    showTutorialMessage('Boa! Você construiu sua primeira estrutura! Continue construindo para se proteger...', 3000);
-  }
 }
 
-/* ===== DESTRUIÇÃO ===== */
+/* ===== DESTRUIÇÃO (TUTORIAL: 5 segundos) ===== */
 let destructTarget = null;
 let destructProgress = 0;
 let isDestroyHeld = false;
@@ -1343,7 +1334,6 @@ function raycastDestructTarget(){
   if(hits.length===0) return null;
   const hit = hits[0];
   
-  // Verifica se é indestrutível (preto)
   const mesh = hit.object;
   if(mesh.userData && mesh.userData.indestructible){
     showToast('⚠️ Esta estrutura é indestrutível!');
@@ -1359,7 +1349,6 @@ function raycastDestructTarget(){
   if(!boxData || boxData.ground) return null;
   if(mesh.userData.destroyed.has(boxIndex)) return null;
   
-  // Verifica se é indestrutível (preto)
   if(boxData.color && boxData.color.getHex && boxData.color.getHex() === 0x000000){
     showToast('⚠️ Esta estrutura é indestrutível!');
     return null;
@@ -1376,6 +1365,9 @@ function sameTarget(a,b){
 }
 
 function getDestructDuration(target){
+  // No tutorial, tudo é destruído em 5 segundos
+  if(isTutorialMode) return 5;
+  
   if(target.kind==='placed'){
     const s = placedBlocks.get(target.structId);
     if (s) {
@@ -1394,16 +1386,14 @@ function finalizeDestruction(target){
     removePlacedStructure(target.structId, true);
     const duration = getDestructDuration(target);
     rewardBlocks(duration, isTutorialMode);
-    showToast('Estrutura desmontada, materiais recuperados');
-    
+    showToast('Estrutura desmontada!');
     if(isTutorialMode && tutorialPhase === 'destroy'){
       tutorialDestroyCount++;
-      showTutorialMessage('🗑️ Destruiu ' + tutorialDestroyCount + '/' + tutorialTotalToDestroy + ' estruturas!', 1500);
+      updateTutorialProgress();
       if(tutorialDestroyCount >= tutorialTotalToDestroy){
-        tutorialPhase = 'build';
-        showTutorialMessage('🏗️ Agora use o inventário (B) para construir! Você tem 2 minutos para construir uma base!', 4000);
-        document.getElementById('tutorialBuildTimer').style.display = 'block';
-        tutorialBuildTime = 0;
+        tutorialPhase = 'runclimb';
+        showTutorialMessage('🏃 Agora corra e suba as 6 plataformas no final do corredor! (Segure Q para correr)', 4000);
+        document.getElementById('tutorialProgress').textContent = '🏃 Suba as 6 plataformas correndo!';
       }
     }
   } else {
@@ -1424,12 +1414,11 @@ function finalizeDestruction(target){
     
     if(isTutorialMode && tutorialPhase === 'destroy'){
       tutorialDestroyCount++;
-      showTutorialMessage('🗑️ Destruiu ' + tutorialDestroyCount + '/' + tutorialTotalToDestroy + ' estruturas!', 1500);
+      updateTutorialProgress();
       if(tutorialDestroyCount >= tutorialTotalToDestroy){
-        tutorialPhase = 'build';
-        showTutorialMessage('🏗️ Agora use o inventário (B) para construir! Você tem 2 minutos para construir uma base!', 4000);
-        document.getElementById('tutorialBuildTimer').style.display = 'block';
-        tutorialBuildTime = 0;
+        tutorialPhase = 'runclimb';
+        showTutorialMessage('🏃 Agora corra e suba as 6 plataformas no final do corredor! (Segure Q para correr)', 4000);
+        document.getElementById('tutorialProgress').textContent = '🏃 Suba as 6 plataformas correndo!';
       }
     }
   }
@@ -1701,7 +1690,7 @@ function applySpikeDamage(dt){
           monsters.splice(i,1);
           if(isTutorialMode && tutorialPhase === 'survive'){
             tutorialMonstersKilled++;
-            showTutorialMessage('💀 Anomalia eliminada! ' + tutorialMonstersKilled + '/5', 1000);
+            document.getElementById('tutorialMonsterCounter').textContent = '💀 Anomalias: ' + monsters.length;
           }
         }
         break;
@@ -1749,124 +1738,7 @@ function updateMonsters(dt, playerPos){
   applySpikeDamage(dt);
 }
 
-/* ===== GEOMETRIA PARA TUTORIAL ===== */
-function generateTutorialBoxes(){
-  const boxes = [];
-  const halfSize = 125;
-  const colorBlack = new THREE.Color(0x000000);
-  
-  // Chão preto indestrutível
-  boxes.push({ 
-    x: 0, y: -0.5, z: 0, 
-    w: halfSize*2 + 20, h: 1, d: halfSize*2 + 20, 
-    color: colorBlack, ground: true, indestructible: true 
-  });
-  
-  // Paredes pretas indestrutíveis
-  const wallH = 15;
-  const wallT = 1;
-  const wSize = halfSize + 10;
-  
-  // Parede norte
-  boxes.push({ x: 0, y: wallH/2, z: -wSize, w: wSize*2, h: wallH, d: wallT, color: colorBlack, indestructible: true });
-  // Parede sul
-  boxes.push({ x: 0, y: wallH/2, z: wSize, w: wSize*2, h: wallH, d: wallT, color: colorBlack, indestructible: true });
-  // Parede leste
-  boxes.push({ x: wSize, y: wallH/2, z: 0, w: wallT, h: wallH, d: wSize*2, color: colorBlack, indestructible: true });
-  // Parede oeste
-  boxes.push({ x: -wSize, y: wallH/2, z: 0, w: wallT, h: wallH, d: wSize*2, color: colorBlack, indestructible: true });
-  
-  // Teto preto indestrutível
-  boxes.push({ x: 0, y: wallH, z: 0, w: wSize*2, h: 1, d: wSize*2, color: colorBlack, indestructible: true });
-  
-  // Plataforma de pulo (para ensinar pulo + corrida)
-  const jumpPlatforms = [
-    { x: -80, y: 0, z: -60, w: 6, h: 1.5, d: 6, color: new THREE.Color(0x444444) },
-    { x: -80, y: 3.5, z: -50, w: 6, h: 1.5, d: 6, color: new THREE.Color(0x444444) },
-    { x: -80, y: 7.5, z: -40, w: 6, h: 1.5, d: 6, color: new THREE.Color(0x444444) },
-    { x: -80, y: 12.5, z: -30, w: 6, h: 1.5, d: 6, color: new THREE.Color(0x44ff44) } // plataforma final verde
-  ];
-  for(const p of jumpPlatforms){
-    boxes.push({ x: p.x, y: p.y, z: p.z, w: p.w, h: p.h, d: p.d, color: p.color });
-  }
-  
-  // Estruturas para destruir (15-20)
-  const structColors = [0xdd4444, 0x44dd44, 0x4444dd, 0xdddd44, 0xdd44dd, 0x44dddd];
-  const structPositions = [];
-  const numStructures = tutorialTotalToDestroy;
-  
-  for(let i=0; i<numStructures; i++){
-    let x, z, valid;
-    let attempts = 0;
-    do {
-      x = (Math.random() - 0.5) * (halfSize - 20) * 1.8;
-      z = (Math.random() - 0.5) * (halfSize - 20) * 1.8;
-      valid = true;
-      // Evita sobrepor com plataformas de pulo
-      for(const p of jumpPlatforms){
-        if(Math.abs(x - p.x) < 10 && Math.abs(z - p.z) < 10){ valid = false; break; }
-      }
-      // Evita sobrepor com outras estruturas
-      for(const pos of structPositions){
-        if(Math.abs(x - pos.x) < 8 && Math.abs(z - pos.z) < 8){ valid = false; break; }
-      }
-      attempts++;
-    } while(!valid && attempts < 50);
-    
-    const color = new THREE.Color(structColors[i % structColors.length]);
-    const w = 2 + Math.random() * 4;
-    const d = 2 + Math.random() * 4;
-    const h = 2 + Math.random() * 6;
-    boxes.push({ x: x, y: h/2, z: z, w: w, h: h, d: d, color: color });
-    structPositions.push({x, z});
-  }
-  
-  return boxes;
-}
-
-function buildTutorialChunk(){
-  const boxes = generateTutorialBoxes();
-  const n = boxes.length;
-  const positions = new Float32Array(n*VERTS_PER_BOX*3);
-  const normals = new Float32Array(n*VERTS_PER_BOX*3);
-  const colors = new Float32Array(n*VERTS_PER_BOX*3);
-  let vOff = 0;
-  for(let bi=0; bi<n; bi++){
-    const b = boxes[bi];
-    for(let i=0;i<VERTS_PER_BOX;i++){
-      const lx = BASE_POS[i*3], ly = BASE_POS[i*3+1], lz = BASE_POS[i*3+2];
-      const idx = (vOff+i)*3;
-      positions[idx] = b.x + lx*b.w;
-      positions[idx+1] = b.y + ly*b.h;
-      positions[idx+2] = b.z + lz*b.d;
-      normals[idx] = BASE_NORM[i*3];
-      normals[idx+1] = BASE_NORM[i*3+1];
-      normals[idx+2] = BASE_NORM[i*3+2];
-      colors[idx] = b.color.r;
-      colors[idx+1] = b.color.g;
-      colors[idx+2] = b.color.b;
-    }
-    vOff += VERTS_PER_BOX;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
-  geo.setAttribute('normal', new THREE.BufferAttribute(normals,3));
-  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
-  const mat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.88, metalness:0.35 });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.frustumCulled = true;
-  mesh.userData.boxes = boxes;
-  mesh.userData.destroyed = new Set();
-  // Marca boxes indestrutíveis
-  for(let i=0; i<boxes.length; i++){
-    if(boxes[i].indestructible){
-      mesh.userData.indestructible = true;
-    }
-  }
-  return mesh;
-}
-
-/* ===== GEOMETRY ===== */
+/* ===== GEOMETRIA ===== */
 const UNIT_BOX = new THREE.BoxGeometry(1,1,1).toNonIndexed();
 const BASE_POS = UNIT_BOX.attributes.position.array;
 const BASE_NORM = UNIT_BOX.attributes.normal.array;
@@ -1906,6 +1778,213 @@ function grimeColor(rng){
   else if(pick<0.7){ c.setHSL(0.24+rng()*0.05, 0.2+rng()*0.15, 0.10+rng()*0.10); }
   else { c.setHSL(0.0, 0.0, 0.05+rng()*0.06); }
   return c;
+}
+
+/* ===== TUTORIAL - MAPA CORREDOR + CUBO ===== */
+function generateTutorialCorridor(){
+  const boxes = [];
+  const colorBlack = new THREE.Color(0x000000);
+  const colorFloor = new THREE.Color(0x333333);
+  const colorWall = new THREE.Color(0x444444);
+  
+  // Dimensões do corredor
+  const corridorWidth = 12;
+  const corridorLength = 280;
+  const corridorHeight = 12;
+  
+  // Chão do corredor
+  boxes.push({ 
+    x: corridorLength/2 - 10, y: -0.5, z: 0, 
+    w: corridorLength + 20, h: 1, d: corridorWidth + 4, 
+    color: colorFloor, ground: true, indestructible: true 
+  });
+  
+  // Paredes do corredor
+  const wallH = corridorHeight;
+  const wallT = 1;
+  const halfW = corridorWidth/2 + 2;
+  
+  // Parede esquerda
+  boxes.push({ 
+    x: corridorLength/2 - 10, y: wallH/2, z: -halfW, 
+    w: corridorLength + 20, h: wallH, d: wallT, 
+    color: colorWall, indestructible: true 
+  });
+  // Parede direita
+  boxes.push({ 
+    x: corridorLength/2 - 10, y: wallH/2, z: halfW, 
+    w: corridorLength + 20, h: wallH, d: wallT, 
+    color: colorWall, indestructible: true 
+  });
+  // Teto
+  boxes.push({ 
+    x: corridorLength/2 - 10, y: wallH, z: 0, 
+    w: corridorLength + 20, h: 1, d: corridorWidth + 4, 
+    color: colorBlack, indestructible: true 
+  });
+  
+  // ÁREA DE PLATAFORMAS DE PULO (3 plataformas comuns)
+  const jumpPlatforms = [
+    { x: 40, y: 1.5, z: 0, w: 4, h: 0.5, d: 4, color: new THREE.Color(0x44aaff) },
+    { x: 55, y: 4.5, z: 0, w: 4, h: 0.5, d: 4, color: new THREE.Color(0x44aaff) },
+    { x: 70, y: 7.5, z: 0, w: 4, h: 0.5, d: 4, color: new THREE.Color(0x44aaff) },
+  ];
+  for(const p of jumpPlatforms){
+    boxes.push({ x: p.x, y: p.y, z: p.z, w: p.w, h: p.h, d: p.d, color: p.color });
+  }
+  
+  // ESTRUTURAS PARA DESTRUIR (25 estruturas)
+  const structColors = [0xdd4444, 0x44dd44, 0x4444dd, 0xdddd44, 0xdd44dd, 0x44dddd, 0xff8800, 0x88ff00];
+  const structPositions = [];
+  
+  for(let i=0; i<tutorialTotalToDestroy; i++){
+    let x, z, valid;
+    let attempts = 0;
+    do {
+      x = 90 + Math.random() * 130;
+      z = (Math.random() - 0.5) * (corridorWidth - 6);
+      valid = true;
+      for(const pos of structPositions){
+        if(Math.abs(x - pos.x) < 5 && Math.abs(z - pos.z) < 5){ valid = false; break; }
+      }
+      attempts++;
+    } while(!valid && attempts < 50);
+    
+    const color = new THREE.Color(structColors[i % structColors.length]);
+    const w = 1.5 + Math.random() * 3;
+    const d = 1.5 + Math.random() * 3;
+    const h = 1.5 + Math.random() * 4;
+    boxes.push({ x: x, y: h/2, z: z, w: w, h: h, d: d, color: color });
+    structPositions.push({x, z});
+  }
+  
+  // 6 PLATAFORMAS PARA SUBIR CORRENDO (no final do corredor)
+  const runPlatforms = [];
+  const startX = corridorLength - 50;
+  for(let i=0; i<6; i++){
+    const px = startX + i * 8;
+    const py = 1.5 + i * 3.5;
+    const color = new THREE.Color(i % 2 === 0 ? 0xffaa44 : 0xff6644);
+    boxes.push({ x: px, y: py, z: 0, w: 5, h: 0.5, d: 5, color: color });
+    runPlatforms.push({x: px, y: py, z: 0});
+  }
+  
+  // PLATAFORMA FINAL (entrada do cubo)
+  boxes.push({ 
+    x: startX + 6 * 8 + 4, y: 1.5 + 6 * 3.5, z: 0, 
+    w: 6, h: 0.5, d: 6, 
+    color: new THREE.Color(0x44ff44), indestructible: true 
+  });
+  
+  // PAREDE DE FECHAMENTO DO CORREDOR (com passagem para o cubo)
+  const endWallX = startX + 6 * 8 + 6;
+  // Parede superior (acima da passagem)
+  boxes.push({ 
+    x: endWallX, y: corridorHeight/2 + 4, z: 0, 
+    w: 2, h: corridorHeight - 4, d: corridorWidth + 4, 
+    color: colorWall, indestructible: true 
+  });
+  // Parede inferior (abaixo da passagem)
+  boxes.push({ 
+    x: endWallX, y: 1.5, z: 0, 
+    w: 2, h: 3, d: corridorWidth + 4, 
+    color: colorWall, indestructible: true 
+  });
+  
+  // ===== CUBO (área isolada) =====
+  const cubeSize = 50;
+  const cubeCenterX = endWallX + 20;
+  const cubeCenterZ = 0;
+  
+  // Chão do cubo
+  boxes.push({ 
+    x: cubeCenterX, y: -0.5, z: cubeCenterZ, 
+    w: cubeSize, h: 1, d: cubeSize, 
+    color: colorFloor, ground: true, indestructible: true 
+  });
+  
+  // Paredes do cubo
+  const halfCube = cubeSize/2;
+  // Parede norte
+  boxes.push({ 
+    x: cubeCenterX, y: corridorHeight/2, z: -halfCube, 
+    w: cubeSize, h: corridorHeight, d: wallT, 
+    color: colorWall, indestructible: true 
+  });
+  // Parede sul
+  boxes.push({ 
+    x: cubeCenterX, y: corridorHeight/2, z: halfCube, 
+    w: cubeSize, h: corridorHeight, d: wallT, 
+    color: colorWall, indestructible: true 
+  });
+  // Parede leste
+  boxes.push({ 
+    x: cubeCenterX + halfCube, y: corridorHeight/2, z: 0, 
+    w: wallT, h: corridorHeight, d: cubeSize, 
+    color: colorWall, indestructible: true 
+  });
+  // Parede oeste (com passagem)
+  boxes.push({ 
+    x: cubeCenterX - halfCube, y: corridorHeight/2, z: 0, 
+    w: wallT, h: corridorHeight, d: cubeSize, 
+    color: colorWall, indestructible: true 
+  });
+  // Teto do cubo
+  boxes.push({ 
+    x: cubeCenterX, y: corridorHeight, z: 0, 
+    w: cubeSize, h: 1, d: cubeSize, 
+    color: colorBlack, indestructible: true 
+  });
+  
+  // Salva referências para uso no tutorial
+  window._tutorialRefs = {
+    cubeCenter: {x: cubeCenterX, z: cubeCenterZ},
+    runPlatforms: runPlatforms,
+    endWallX: endWallX
+  };
+  
+  return boxes;
+}
+
+function buildTutorialChunk(){
+  const boxes = generateTutorialCorridor();
+  const n = boxes.length;
+  const positions = new Float32Array(n*VERTS_PER_BOX*3);
+  const normals = new Float32Array(n*VERTS_PER_BOX*3);
+  const colors = new Float32Array(n*VERTS_PER_BOX*3);
+  let vOff = 0;
+  for(let bi=0; bi<n; bi++){
+    const b = boxes[bi];
+    for(let i=0;i<VERTS_PER_BOX;i++){
+      const lx = BASE_POS[i*3], ly = BASE_POS[i*3+1], lz = BASE_POS[i*3+2];
+      const idx = (vOff+i)*3;
+      positions[idx] = b.x + lx*b.w;
+      positions[idx+1] = b.y + ly*b.h;
+      positions[idx+2] = b.z + lz*b.d;
+      normals[idx] = BASE_NORM[i*3];
+      normals[idx+1] = BASE_NORM[i*3+1];
+      normals[idx+2] = BASE_NORM[i*3+2];
+      colors[idx] = b.color.r;
+      colors[idx+1] = b.color.g;
+      colors[idx+2] = b.color.b;
+    }
+    vOff += VERTS_PER_BOX;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(normals,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  const mat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.88, metalness:0.35 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = true;
+  mesh.userData.boxes = boxes;
+  mesh.userData.destroyed = new Set();
+  for(let i=0; i<boxes.length; i++){
+    if(boxes[i].indestructible){
+      mesh.userData.indestructible = true;
+    }
+  }
+  return mesh;
 }
 
 /* ---------------- CHUNK ---------------- */
@@ -2074,7 +2153,6 @@ function buildChunkMesh(boxes){
   mesh.frustumCulled = true;
   mesh.userData.boxes = boxes;
   mesh.userData.destroyed = new Set();
-  // Marca indestrutíveis
   for(let i=0; i<boxes.length; i++){
     if(boxes[i].indestructible){
       mesh.userData.indestructible = true;
@@ -2199,7 +2277,7 @@ function updateDayNight(dt){
 }
 let isDay = true;
 
-/* ---------------- LANTERNA ---------------- */
+/* ===== LANTERNA ===== */
 function toggleFlashlight(){
   flashlightOn = !flashlightOn;
   flashlight.intensity = flashlightOn ? 25 : 0;
@@ -2220,7 +2298,7 @@ function updateFlashlight(){
   flashlight.angle = 0.4;
 }
 
-/* ---------------- PLAYER ---------------- */
+/* ===== PLAYER ===== */
 const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 0) };
 let yaw = 0, pitch = 0;
 let velocityY = 0;
@@ -2365,7 +2443,7 @@ function updatePhysics(dt, inForward, inStrafe){
   document.getElementById('hudLayer').textContent = currentLayer;
 }
 
-/* ---------------- FLAG INDICATOR ---------------- */
+/* ===== FLAG INDICATOR ===== */
 function updateFlagIndicator(){
   if(flags.length===0){ flagIndicatorEl.style.display='none'; return; }
   const f = flags[0];
@@ -2377,7 +2455,7 @@ function updateFlagIndicator(){
   flagIndicatorEl.textContent = '🚩 '+Math.round(dist)+'m';
 }
 
-/* ---------------- INPUT ---------------- */
+/* ===== INPUT ===== */
 let mode = null;
 const keys = {};
 let pointerLocked = false;
@@ -2421,7 +2499,7 @@ function pcInputVector(){
   return {f,s};
 }
 
-/* ---------------- MOBILE ---------------- */
+/* ===== MOBILE ===== */
 const joystickZone = document.getElementById('joystickZone');
 const joystickKnob = document.getElementById('joystickKnob');
 const camLookZone = document.getElementById('camLookZone');
@@ -2493,13 +2571,11 @@ camLookZone.addEventListener('touchend', endLook);
 camLookZone.addEventListener('touchcancel', endLook);
 
 btnJump.addEventListener('touchstart', (e)=>{ e.preventDefault(); wantsJump = true; }, {passive:false});
-
 btnRun.addEventListener('touchstart', (e)=>{
   e.preventDefault();
   running = !running;
   btnRun.classList.toggle('active', running);
 }, {passive:false});
-
 btnFlashlight.addEventListener('touchstart', (e)=>{ e.preventDefault(); toggleFlashlight(); }, {passive:false});
 btnCamera.addEventListener('touchstart', (e)=>{ e.preventDefault(); toggleCamera(); }, {passive:false});
 
@@ -2509,8 +2585,6 @@ function mobileInputVector(){
 }
 
 /* ===== TUTORIAL MESSAGES ===== */
-let tutorialMessageTimeout = null;
-
 function showTutorialMessage(msg, duration){
   const overlay = document.getElementById('tutorialOverlay');
   let msgBox = overlay.querySelector('.msg-box');
@@ -2529,31 +2603,20 @@ function showTutorialMessage(msg, duration){
   }
 }
 
-function showTutorialStep(step){
-  const messages = [
-    { title: '🎮 BEM-VINDO AO TUTORIAL!', text: 'Use <span class="key">W A S D</span> para se mover.<br>Explore o ambiente e aprenda os controles.' },
-    { title: '🏃 COMO PULAR', text: 'Pressione <span class="key">ESPAÇO</span> para pular.<br>Você pode pular sobre obstáculos pequenos.' },
-    { title: '🏃 CORRA E PULE MAIS ALTO!', text: 'Segure <span class="key">Q</span> para correr.<br>Enquanto corre, o pulo é mais alto!<br>Vá até as plataformas verdes para testar.' },
-    { title: '💥 DESTRUIR E COLETAR', text: 'Aponte para uma estrutura e segure <span class="key">T</span> para destruir.<br>Colete os blocos para construir!<br>Destrua TODAS as estruturas coloridas.' },
-    { title: '🏗️ CONSTRUIR', text: 'Pressione <span class="key">B</span> para abrir o inventário.<br>Use os blocos coletados para construir.<br>Construa uma base para se proteger!' },
-    { title: '🌙 ANOMALIAS!', text: '⚠️ Quando a noite chegar, ANOMALIAS aparecerão!<br>Elas são perigosas e vão te perseguir.<br>Use sua base para se proteger ou as derrote!' }
-  ];
-  
-  if(step < messages.length){
-    const msg = messages[step];
-    showTutorialMessage('<div class="title">'+msg.title+'</div>'+msg.text, 5000);
-  }
+function updateTutorialProgress(){
+  const progress = document.getElementById('tutorialProgress');
+  progress.textContent = '🗑️ ' + tutorialDestroyCount + '/' + tutorialTotalToDestroy + ' destruídas';
 }
 
-/* ===== TUTORIAL ===== */
 function resetTutorial(){
-  tutorialStep = 0;
   tutorialPhase = 'walk';
   tutorialDestroyCount = 0;
-  tutorialMonstersKilled = 0;
   tutorialBuildTime = 0;
   tutorialSurviveTime = 0;
+  tutorialComplete = false;
+  tutorialEnteredCube = false;
   tutorialMonstersSpawned = false;
+  tutorialMonstersKilled = 0;
   inventory = {};
   flags = [];
   placedBlocks.clear();
@@ -2561,7 +2624,6 @@ function resetTutorial(){
   meshToStructure.clear();
   claimedChunks.clear();
   
-  // Limpa estruturas colocadas
   while(placedGroup.children.length > 0){
     const child = placedGroup.children[0];
     placedGroup.remove(child);
@@ -2571,14 +2633,9 @@ function resetTutorial(){
     });
   }
   
-  // Limpa monstros
-  for(const m of monsters){ 
-    monstersGroup.remove(m.mesh); 
-    disposeMonster(m.mesh); 
-  }
+  for(const m of monsters){ monstersGroup.remove(m.mesh); disposeMonster(m.mesh); }
   monsters = [];
   
-  // Reseta jogador
   player.position.set(0, EYE_HEIGHT, 0);
   velocityY = 0;
   grounded = true;
@@ -2586,55 +2643,76 @@ function resetTutorial(){
   pitch = 0;
   cameraMode = 'third';
   
-  // Mostra mensagem inicial
-  showTutorialStep(0);
-  
-  // Esconde timers
   document.getElementById('tutorialTimer').style.display = 'none';
   document.getElementById('tutorialMonsterCounter').style.display = 'none';
   document.getElementById('tutorialBuildTimer').style.display = 'none';
   document.getElementById('tutorialSurviveTimer').style.display = 'none';
+  document.getElementById('tutorialProgress').style.display = 'none';
   
-  // Atualiza HUD
   document.getElementById('hudTimeOfDay').textContent = '☀️ TUTORIAL';
   document.getElementById('hudTimeOfDay').style.color = '#44ddff';
+  
+  showTutorialMessage('🚶‍♂️ ANDE pelo corredor! Use <span class="key">W A S D</span>', 3000);
 }
 
 function updateTutorial(dt){
   if(!isTutorialMode || tutorialComplete) return;
   
-  // Verifica se o jogador chegou na plataforma verde (fim do pulo)
-  if(tutorialPhase === 'jump' || tutorialPhase === 'runjump'){
-    const px = player.position.x;
-    const pz = player.position.z;
-    // Plataforma verde em (-80, 12.5, -30)
-    if(Math.abs(px + 80) < 4 && Math.abs(pz + 30) < 4 && player.position.y > 10){
+  const px = player.position.x;
+  const pz = player.position.z;
+  const refs = window._tutorialRefs || {};
+  
+  // FASE 1: ANDAR
+  if(tutorialPhase === 'walk'){
+    if(px > 20){
+      tutorialPhase = 'jump';
+      showTutorialMessage('⬆️ PULE as 3 plataformas azuis! <span class="key">ESPAÇO</span>', 3000);
+    }
+  }
+  
+  // FASE 2: PULAR (3 plataformas)
+  if(tutorialPhase === 'jump'){
+    if(px > 75 && player.position.y > 6){
       tutorialPhase = 'destroy';
-      showTutorialStep(3);
-      showTutorialMessage('🗑️ Agora destrua TODAS as estruturas coloridas! (Segure T)', 4000);
+      showTutorialMessage('💥 DESTRUA as 25 estruturas coloridas! <span class="key">T</span> (segure)', 4000);
+      document.getElementById('tutorialProgress').style.display = 'block';
+      updateTutorialProgress();
     }
   }
   
-  // Verifica se o jogador está perto da área de pulo
-  if(tutorialPhase === 'walk' || tutorialPhase === 'jump'){
-    const px = player.position.x;
-    const pz = player.position.z;
-    if(px < -50 && pz < -20){
-      if(tutorialPhase === 'walk'){
-        tutorialPhase = 'jump';
-        showTutorialStep(1);
-      }
+  // FASE 3: DESTRUIR
+  if(tutorialPhase === 'destroy'){
+    // já atualizado via finalizeDestruction
+  }
+  
+  // FASE 4: SUBIR CORRENDO (6 plataformas)
+  if(tutorialPhase === 'runclimb'){
+    // Verifica se o jogador chegou ao topo (plataforma final)
+    if(px > refs.endWallX && player.position.y > 20){
+      tutorialPhase = 'enter_cube';
+      showTutorialMessage('🚪 ENTRE no cubo!', 2000);
     }
   }
   
-  // Verifica se o jogador está correndo (pulo alto)
-  if(tutorialPhase === 'jump' && running){
-    tutorialPhase = 'runjump';
-    showTutorialStep(2);
+  // FASE 5: ENTRAR NO CUBO
+  if(tutorialPhase === 'enter_cube'){
+    const cubeCenter = refs.cubeCenter || {x: 0, z: 0};
+    const distToCube = Math.hypot(px - cubeCenter.x, pz - cubeCenter.z);
+    if(distToCube < 20 && !tutorialEnteredCube){
+      tutorialEnteredCube = true;
+      tutorialPhase = 'prepare';
+      document.getElementById('tutorialProgress').style.display = 'none';
+      
+      // Fecha a passagem (bloqueia a parede)
+      // Na prática, vamos apenas mostrar a mensagem
+      showTutorialMessage('🏗️ Você tem 2 MINUTOS para construir uma base!<br>Use <span class="key">B</span> para abrir o inventário.', 5000);
+      document.getElementById('tutorialBuildTimer').style.display = 'block';
+      tutorialBuildTime = 0;
+    }
   }
   
-  // Fase de construção
-  if(tutorialPhase === 'build'){
+  // FASE 6: PREPARAR (2 minutos para construir)
+  if(tutorialPhase === 'prepare'){
     tutorialBuildTime += dt;
     const remaining = Math.max(0, 120 - tutorialBuildTime);
     document.getElementById('tutorialBuildTimer').textContent = '⏱️ ' + Math.ceil(remaining) + 's para construir';
@@ -2644,19 +2722,37 @@ function updateTutorial(dt){
       document.getElementById('tutorialBuildTimer').style.display = 'none';
       document.getElementById('tutorialSurviveTimer').style.display = 'block';
       document.getElementById('tutorialMonsterCounter').style.display = 'block';
+      
       showTutorialMessage('🌙 A NOITE CHEGOU! Sobreviva por 40 segundos!', 3000);
       tutorialSurviveTime = 0;
       tutorialMonstersKilled = 0;
       
-      // Spawna 5 anomalias
+      // Spawna 5 anomalias (elas vêm da passagem)
       for(let i=0; i<5; i++){
-        spawnMonster(player.position, true);
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 15 + Math.random() * 20;
+        const spawnX = refs.endWallX + 4 + Math.cos(angle) * dist;
+        const spawnZ = Math.sin(angle) * dist * 0.6;
+        const mesh = createMonsterMesh();
+        mesh.position.set(spawnX, 1, spawnZ);
+        monstersGroup.add(mesh);
+        monsters.push({
+          mesh,
+          pos: new THREE.Vector3(spawnX, 1, spawnZ),
+          dir: new THREE.Vector3(0,0,1),
+          commitTimer: 0,
+          stuckTimer: 0,
+          stuckCheckPos: new THREE.Vector3(spawnX, 1, spawnZ),
+          hp: MONSTER_MAX_HP,
+          spikeCooldown: 0,
+          isTutorial: true
+        });
       }
       tutorialMonstersSpawned = true;
     }
   }
   
-  // Fase de sobrevivência
+  // FASE 7: SOBREVIVER
   if(tutorialPhase === 'survive'){
     tutorialSurviveTime += dt;
     const remaining = Math.max(0, 40 - tutorialSurviveTime);
@@ -2664,7 +2760,6 @@ function updateTutorial(dt){
     document.getElementById('tutorialMonsterCounter').textContent = '💀 Anomalias: ' + monsters.length;
     
     if(tutorialSurviveTime >= 40){
-      // TUTORIAL COMPLETO!
       tutorialComplete = true;
       tutorialPhase = 'done';
       document.getElementById('tutorialSurviveTimer').style.display = 'none';
@@ -2673,15 +2768,10 @@ function updateTutorial(dt){
       
       showToast('🎉 TUTORIAL COMPLETO! Iniciando jogo real...');
       
-      // Limpa tutorial
-      for(const m of monsters){ 
-        monstersGroup.remove(m.mesh); 
-        disposeMonster(m.mesh); 
-      }
+      for(const m of monsters){ monstersGroup.remove(m.mesh); disposeMonster(m.mesh); }
       monsters = [];
       isTutorialMode = false;
       
-      // Inicia o jogo real
       setTimeout(() => {
         beginGame(mode);
       }, 2000);
@@ -2695,7 +2785,6 @@ function beginTutorial(selectedModeArg){
   tutorialPhase = 'walk';
   tutorialDestroyCount = 0;
   tutorialComplete = false;
-  tutorialMonstersSpawned = false;
   
   mode = selectedModeArg;
   isInPurpleCube = false;
@@ -2719,10 +2808,8 @@ function beginTutorial(selectedModeArg){
   placingType = null;
   updatePlacementHint();
   
-  // Reseta inventário
   inventory = {};
   
-  // Limpa estruturas
   while(placedGroup.children.length > 0){
     const child = placedGroup.children[0];
     placedGroup.remove(child);
@@ -2738,7 +2825,6 @@ function beginTutorial(selectedModeArg){
   flags = [];
   placedIdCounter = 0;
   
-  // Limpa chunks
   chunkMap.clear();
   saltMap.clear();
   while(chunkGroup.children.length > 0){
@@ -2748,7 +2834,6 @@ function beginTutorial(selectedModeArg){
     if(child.material) child.material.dispose();
   }
   
-  // Limpa monstros
   for(const m of monsters){ monstersGroup.remove(m.mesh); disposeMonster(m.mesh); }
   monsters = [];
   
@@ -2760,7 +2845,6 @@ function beginTutorial(selectedModeArg){
   cameraMode = 'third';
   document.getElementById('hudCamMode').textContent = '3ª PESSOA';
   
-  // Build tutorial chunk
   const tutorialMesh = buildTutorialChunk();
   chunkGroup.add(tutorialMesh);
   chunkMap.set('tutorial', {cx:0, cz:0, layer:0, mesh:tutorialMesh, state:'active', alpha:1, scaleY:1});
@@ -2773,21 +2857,26 @@ function beginTutorial(selectedModeArg){
   if(mode==='mobile'){ mobileControls.style.display='block'; }
   gameStartTime = performance.now();
   
-  // Mostra primeira mensagem do tutorial
+  document.getElementById('tutorialProgress').style.display = 'none';
+  document.getElementById('tutorialBuildTimer').style.display = 'none';
+  document.getElementById('tutorialSurviveTimer').style.display = 'none';
+  document.getElementById('tutorialMonsterCounter').style.display = 'none';
+  
   setTimeout(() => {
-    showTutorialStep(0);
+    showTutorialMessage('🚶‍♂️ ANDE pelo corredor! Use <span class="key">W A S D</span>', 3000);
   }, 500);
   
   started = true;
   animate();
 }
 
-/* ===== START - JOGO REAL ===== */
+/* ===== JOGO REAL ===== */
 function beginGame(selectedModeArg){
   isTutorialMode = false;
   tutorialComplete = false;
   document.getElementById('tutorialOverlay').classList.remove('active');
-  document.getElementById('tutorialOverlay').querySelector('.msg-box')?.remove();
+  const msgBox = document.getElementById('tutorialOverlay').querySelector('.msg-box');
+  if(msgBox) msgBox.remove();
   
   ACTIVE_RADIUS = 600;
   UNLOAD_RADIUS = ACTIVE_RADIUS + UNLOAD_MARGIN;
@@ -2801,7 +2890,6 @@ function beginGame(selectedModeArg){
   loadingLabel.textContent='CARREGANDO 0%';
   loadingBarInner.style.width='0%';
   
-  // Reseta posição
   player.position.set(0, EYE_HEIGHT, 0);
   velocityY = 0; fallStartY = null; grounded = true;
   yaw = 0; pitch = 0;
@@ -2815,10 +2903,8 @@ function beginGame(selectedModeArg){
   placingType = null;
   updatePlacementHint();
   
-  // Reseta inventário
   inventory = {};
   
-  // Limpa estruturas
   while(placedGroup.children.length > 0){
     const child = placedGroup.children[0];
     placedGroup.remove(child);
@@ -2914,7 +3000,7 @@ function initialLoadStep(){
 
 let gameStartTime = null;
 
-/* ---------------- HUD ---------------- */
+/* ===== HUD ===== */
 const hudTime = document.getElementById('hudTime');
 const hudPos = document.getElementById('hudPos');
 function formatTimeHud(ms){
@@ -2925,7 +3011,7 @@ function formatTimeHud(ms){
   return hh+':'+mm+':'+ss;
 }
 
-/* ---------------- MAIN LOOP ---------------- */
+/* ===== MAIN LOOP ===== */
 const clock = new THREE.Clock();
 let started = false;
 
@@ -2937,7 +3023,6 @@ function animate(){
   if(deathActive){ updateDeathScreen(dt); renderer.render(scene, camera); return; }
   
   if(isTutorialMode && !tutorialComplete){
-    // Modo tutorial
     const inVec = mode==='pc' ? pcInputVector() : mobileInputVector();
     updatePhysics(dt, inVec.f, inVec.s);
     updateFlashlight();
@@ -2973,7 +3058,6 @@ function animate(){
   renderer.render(scene, camera);
 }
 
-// Inicializa
 animate();
 })();
 </script>
