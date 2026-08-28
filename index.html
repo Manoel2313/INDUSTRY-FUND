@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>INDUSTRY FUND - BURACO NEGRO</title>
+<title>INDUSTRY FUND - ZONA DE ANOMALIAS</title>
 <style>
   :root{
     --gray-950:#0c0d0f;
@@ -228,13 +228,6 @@
   }
   #btnRun.active{background:var(--accent);border-color:var(--accent);color:#111;}
 
-  #btnFly{
-    position:absolute;right:20px;top:20px;width:64px;height:64px;
-    font-size:10px;
-    border-color:rgba(100,200,255,0.2);
-  }
-  #btnFly.active{background:#3a86c8;border-color:#3a86c8;color:#0c0d0f;}
-
   #btnFlashlight{
     position:absolute;left:50%;bottom:100px;transform:translateX(-50%);
     width:64px;height:64px;
@@ -326,7 +319,7 @@
 <div id="startScreen">
   <div>
     <div id="startTitle">Industry&nbsp;Fund</div>
-    <div id="startSub">BURACO NEGRO • FUJA!</div>
+    <div id="startSub">ZONA DE ANOMALIAS • FUJA!</div>
   </div>
   <div id="platformRow">
     <button class="platBtn" id="btnPC">PC</button>
@@ -338,18 +331,12 @@
 <div id="menuScreen">
   <div id="menuTitle">⚙️ CONFIGURAÇÕES</div>
   <div class="menuRow">
-    <span class="menuLabel">🔴 ANOMALIA</span>
-    <div class="menuOptions" id="anomaliaOpts">
-      <button class="menuOpt active" data-value="on">ATIVADA</button>
-      <button class="menuOpt" data-value="off">DESATIVADA</button>
-    </div>
-  </div>
-  <div class="menuRow">
-    <span class="menuLabel">📡 ALCANCE</span>
-    <div class="menuOptions" id="renderOpts">
-      <button class="menuOpt" data-value="600">600m</button>
-      <button class="menuOpt" data-value="1000">1.000m</button>
-      <button class="menuOpt active" data-value="2500">2.500m</button>
+    <span class="menuLabel">👹 DIFICULDADE</span>
+    <div class="menuOptions" id="dificuldadeOpts">
+      <button class="menuOpt" data-value="0">FÁCIL</button>
+      <button class="menuOpt active" data-value="1">MÉDIO</button>
+      <button class="menuOpt" data-value="5">DIFÍCIL</button>
+      <button class="menuOpt" data-value="15">INFERNO</button>
     </div>
   </div>
   <div class="menuRow">
@@ -387,7 +374,7 @@
   <div id="hudCamera">🎥 <span id="hudCamMode">3ª PESSOA</span></div>
 </div>
 <div id="crosshair"></div>
-<div id="pcHint">WASD mover · Q correr · E voar · F lanterna · R câmera · MOUSE olhar</div>
+<div id="pcHint">WASD mover · ESPAÇO pular · Q correr · F lanterna · R câmera · MOUSE olhar</div>
 
 <!-- MOBILE CONTROLS -->
 <div id="mobileControls">
@@ -396,7 +383,6 @@
   <div id="joystickZone"><div id="joystickKnob"></div></div>
   <button class="mobileBtn" id="btnJump">⬆ PULAR</button>
   <button class="mobileBtn" id="btnRun">🏃 CORRER</button>
-  <button class="mobileBtn" id="btnFly">✈ VOAR</button>
   <button class="mobileBtn" id="btnFlashlight">🔦 LUZ</button>
 </div>
 
@@ -406,13 +392,12 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - BURACO NEGRO (ESFERA ROXA)
+   INDUSTRY FUND - ZONA DE ANOMALIAS
    ====================================================================== */
 
 /* ===== MENU ===== */
 let menuConfig = {
-  anomalia: true,
-  renderDistance: 2500,
+  difficulty: 1,          // anomalias por 50m: 0 facil, 1 medio, 5 dificil, 15 inferno
   cycleMode: 'cycle',
   cycleDuration: 120
 };
@@ -420,18 +405,11 @@ let selectedMode = null;
 let isInPurpleCube = false;
 
 function setupMenu(){
-  document.querySelectorAll('#anomaliaOpts .menuOpt').forEach(btn => {
+  document.querySelectorAll('#dificuldadeOpts .menuOpt').forEach(btn => {
     btn.addEventListener('click', ()=>{
-      document.querySelectorAll('#anomaliaOpts .menuOpt').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#dificuldadeOpts .menuOpt').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      menuConfig.anomalia = btn.dataset.value === 'on';
-    });
-  });
-  document.querySelectorAll('#renderOpts .menuOpt').forEach(btn => {
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('#renderOpts .menuOpt').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      menuConfig.renderDistance = parseInt(btn.dataset.value);
+      menuConfig.difficulty = parseInt(btn.dataset.value);
     });
   });
   document.querySelectorAll('#cycleOpts .menuOpt').forEach(btn => {
@@ -468,15 +446,14 @@ document.getElementById('btnMobile').addEventListener('click', ()=>{
 
 /* ---------------- CONFIG ---------------- */
 let CHUNK_SIZE = 100;
-let ACTIVE_RADIUS = 2500;
+let ACTIVE_RADIUS = 1000; // alcance de renderização fixo (1000m)
 let UNLOAD_MARGIN = 60;
 let UNLOAD_RADIUS = ACTIVE_RADIUS + UNLOAD_MARGIN;
 let INITIAL_RADIUS = 220;
 let FADE_TIME = 1.1;
 
-const WALK_SPEED   = 5;
-const RUN_MULT     = 5;
-const FLY_SPEED    = 100;
+const WALK_SPEED   = 3;      // 3 m/s andando
+const RUN_MULT     = 5;      // corrida = 5x mais rapido (15 m/s)
 
 let DAY_DURATION = 120;
 let NIGHT_DURATION = 120;
@@ -492,32 +469,24 @@ const STAIR_RADIUS  = 11;
 const STEP_RISE     = 0.6;
 const STEP_RUN      = 1.5;
 
-// ===== BURACO NEGRO (ESFERA ROXA) =====
-const BLACKHOLE_PULL_RADIUS = 30;
-const BLACKHOLE_DEATH_RADIUS = 5;
-const BLACKHOLE_SPAWN_DIST = 900;
-const BLACKHOLE_SPEED = 8;
-
 const EYE_HEIGHT   = 1.7;
 const PLAYER_RADIUS = 0.4;
 const GRAVITY      = -24;
-const JUMP_SPEED   = 8.2;
+const JUMP_SPEED_NORMAL = Math.sqrt(2 * Math.abs(GRAVITY) * 2); // salto de 2 metros
+const JUMP_SPEED_RUN    = Math.sqrt(2 * Math.abs(GRAVITY) * 6); // salto de 6 metros correndo
 const MAX_FALL_SPEED = 55;
 
 /* ===== MODO DE CÂMERA ===== */
 let cameraMode = 'third';
-const THIRD_PERSON_DISTANCE = 6.0;
-const THIRD_PERSON_HEIGHT = 1.2;
+const THIRD_PERSON_DISTANCE = 5.5;
+const THIRD_PERSON_PITCH_MIN = -0.9;
+const THIRD_PERSON_PITCH_MAX = 0.6;
 
 function toggleCamera(){
   cameraMode = cameraMode === 'third' ? 'first' : 'third';
   document.getElementById('hudCamMode').textContent = cameraMode === 'third' ? '3ª PESSOA' : '1ª PESSOA';
   const btn = document.getElementById('btnCamera');
   if(btn) btn.classList.toggle('active', cameraMode === 'first');
-  if(!isInPurpleCube){
-    playerGroup.visible = cameraMode === 'third';
-  }
-  document.getElementById('crosshair').style.display = cameraMode === 'first' ? 'block' : 'none';
 }
 
 /* ---------------- THREE SETUP ---------------- */
@@ -566,7 +535,7 @@ const fillLight = new THREE.DirectionalLight(0x446688, 0.3);
 fillLight.position.set(-160,120,-140);
 scene.add(fillLight);
 
-/* ===== LANTERNA ===== */
+/* ===== LANTERNA (no capacete) ===== */
 const flashlight = new THREE.SpotLight(0xffeedd, 0);
 flashlight.angle = 0.48;
 flashlight.penumbra = 0.3;
@@ -591,7 +560,7 @@ function onResize(){
 window.addEventListener('resize', onResize);
 onResize();
 
-/* ===== PERSONAGEM ===== */
+/* ===== PERSONAGEM (traje laranja, mascara anti-radiação, cilindros de O2) ===== */
 const playerGroup = new THREE.Group();
 scene.add(playerGroup);
 
@@ -599,150 +568,188 @@ function createPlayer(){
   while(playerGroup.children.length > 0){
     const child = playerGroup.children[0];
     playerGroup.remove(child);
-    if(child.geometry) child.geometry.dispose();
-    if(child.material) child.material.dispose();
+    child.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); });
   }
 
-  const bodyGeo = new THREE.BoxGeometry(0.8, 1.0, 0.5);
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff6633, roughness: 0.8, metalness: 0.1 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 0.9;
-  body.castShadow = true;
-  playerGroup.add(body);
+  const suitMat  = new THREE.MeshStandardMaterial({ color: 0xff6a1a, roughness: 0.75, metalness: 0.08 });
+  const glossyBlack = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.85, metalness: 0.15 });
+  const vestMat  = new THREE.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.85 });
+  const beltMat  = new THREE.MeshStandardMaterial({ color: 0x53381f, roughness: 0.8 });
+  const skinMat  = new THREE.MeshStandardMaterial({ color: 0xf5d0b8, roughness: 0.6 });
 
-  const headGeo = new THREE.SphereGeometry(0.3, 12, 12);
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xf5d0b8, roughness: 0.6 });
-  const head = new THREE.Mesh(headGeo, headMat);
+  const bodyParts = [];   // partes que animam (nao usadas diretamente)
+  const headParts = [];   // ocultadas em 1a pessoa
+
+  // TORSO
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.5), suitMat);
+  torso.position.y = 0.9;
+  torso.castShadow = true;
+  playerGroup.add(torso);
+
+  // COLETE (marrom, sobre o torso)
+  const vest = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.55, 0.54), vestMat);
+  vest.position.y = 1.05;
+  vest.castShadow = true;
+  playerGroup.add(vest);
+
+  // CABEÇA
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), skinMat);
   head.position.y = 1.65;
   head.castShadow = true;
   playerGroup.add(head);
+  headParts.push(head);
 
+  // MASCARA ANTI-RADIAÇÃO
   const maskGroup = new THREE.Group();
-  const filterGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.15, 8);
-  const filterMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
-  const filter = new THREE.Mesh(filterGeo, filterMat);
+  const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.15, 8), glossyBlack);
   filter.rotation.x = Math.PI/2;
   filter.position.set(0, -0.02, 0.22);
   maskGroup.add(filter);
-  const maskGeo = new THREE.SphereGeometry(0.18, 8, 8);
-  const maskMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
-  const mask = new THREE.Mesh(maskGeo, maskMat);
+  const mask = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.5, metalness: 0.3 }));
   mask.scale.set(1, 1, 0.6);
   mask.position.set(0, 0.02, 0.1);
   maskGroup.add(mask);
-  const visorGeo = new THREE.SphereGeometry(0.07, 8, 8);
-  const visorMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x224466, emissiveIntensity: 0.5 });
-  const visor = new THREE.Mesh(visorGeo, visorMat);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x224466, emissiveIntensity: 0.5 }));
   visor.scale.set(0.6, 0.6, 0.2);
   visor.position.set(0, 0.08, 0.18);
   maskGroup.add(visor);
   maskGroup.position.set(0, 1.62, 0.08);
   playerGroup.add(maskGroup);
+  headParts.push(maskGroup);
 
-  const helmetGeo = new THREE.SphereGeometry(0.28, 8, 8);
-  const helmetMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.4, metalness: 0.5 });
-  const helmet = new THREE.Mesh(helmetGeo, helmetMat);
-  helmet.scale.set(1, 1, 0.5);
-  helmet.position.set(0, 1.62, -0.15);
+  // CAPACETE
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 10), new THREE.MeshStandardMaterial({ color: 0x5c5c5c, roughness: 0.4, metalness: 0.5 }));
+  helmet.scale.set(1, 0.9, 0.65);
+  helmet.position.set(0, 1.68, -0.14);
   playerGroup.add(helmet);
+  headParts.push(helmet);
 
-  const armMat = new THREE.MeshStandardMaterial({ color: 0xff6633, roughness: 0.8 });
-  for(let side of [-1, 1]){
-    const armGeo = new THREE.BoxGeometry(0.12, 0.6, 0.12);
-    const arm = new THREE.Mesh(armGeo, armMat);
-    arm.position.set(side * 0.5, 1.1, 0);
-    arm.castShadow = true;
-    playerGroup.add(arm);
-  }
+  // LANTERNA DE CAPACETE (visual)
+  const headLampGroup = new THREE.Group();
+  const lampBody = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, 0.09, 8), new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 }));
+  lampBody.rotation.x = Math.PI/2;
+  headLampGroup.add(lampBody);
+  const lampGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.02, 8), new THREE.MeshStandardMaterial({ color: 0xffeecc, emissive: 0xffdd44, emissiveIntensity: 0.8 }));
+  lampGlass.rotation.x = Math.PI/2;
+  lampGlass.position.z = 0.05;
+  headLampGroup.add(lampGlass);
+  headLampGroup.position.set(0, 1.9, 0.18);
+  playerGroup.add(headLampGroup);
+  headParts.push(headLampGroup);
 
-  const gloveMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-  for(let side of [-1, 1]){
-    const gloveGeo = new THREE.SphereGeometry(0.08, 6, 6);
-    const glove = new THREE.Mesh(gloveGeo, gloveMat);
-    glove.position.set(side * 0.5, 0.8, 0);
-    playerGroup.add(glove);
-  }
+  // BRAÇOS (pivos no ombro para animação)
+  const leftArmPivot = new THREE.Group();
+  leftArmPivot.position.set(-0.5, 1.4, 0);
+  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), suitMat);
+  leftArm.position.y = -0.3;
+  leftArm.castShadow = true;
+  leftArmPivot.add(leftArm);
+  const leftGlove = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), glossyBlack);
+  leftGlove.position.y = -0.6;
+  leftArmPivot.add(leftGlove);
+  playerGroup.add(leftArmPivot);
 
-  const legMat = new THREE.MeshStandardMaterial({ color: 0xff6633, roughness: 0.8 });
-  for(let side of [-1, 0.5]){
-    const legGeo = new THREE.BoxGeometry(0.15, 0.5, 0.15);
-    const leg = new THREE.Mesh(legGeo, legMat);
-    leg.position.set(side * 0.2, 0.35, 0);
-    leg.castShadow = true;
-    playerGroup.add(leg);
-  }
+  const rightArmPivot = new THREE.Group();
+  rightArmPivot.position.set(0.5, 1.4, 0);
+  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), suitMat);
+  rightArm.position.y = -0.3;
+  rightArm.castShadow = true;
+  rightArmPivot.add(rightArm);
+  const rightGlove = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), glossyBlack);
+  rightGlove.position.y = -0.6;
+  rightArmPivot.add(rightGlove);
+  playerGroup.add(rightArmPivot);
 
-  const bootMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-  for(let side of [-1, 0.5]){
-    const bootGeo = new THREE.BoxGeometry(0.18, 0.1, 0.25);
-    const boot = new THREE.Mesh(bootGeo, bootMat);
-    boot.position.set(side * 0.2, 0.08, 0.05);
-    playerGroup.add(boot);
-  }
+  // PERNAS (pivos no quadril para animação)
+  const leftLegPivot = new THREE.Group();
+  leftLegPivot.position.set(-0.2, 0.6, 0);
+  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), suitMat);
+  leftLeg.position.y = -0.25;
+  leftLeg.castShadow = true;
+  leftLegPivot.add(leftLeg);
+  const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.25), glossyBlack);
+  leftBoot.position.set(0, -0.52, 0.05);
+  leftLegPivot.add(leftBoot);
+  playerGroup.add(leftLegPivot);
 
-  const beltMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.7 });
-  const beltGeo = new THREE.BoxGeometry(0.7, 0.06, 0.4);
-  const belt = new THREE.Mesh(beltGeo, beltMat);
+  const rightLegPivot = new THREE.Group();
+  rightLegPivot.position.set(0.2, 0.6, 0);
+  const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), suitMat);
+  rightLeg.position.y = -0.25;
+  rightLeg.castShadow = true;
+  rightLegPivot.add(rightLeg);
+  const rightBoot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.25), glossyBlack);
+  rightBoot.position.set(0, -0.52, 0.05);
+  rightLegPivot.add(rightBoot);
+  playerGroup.add(rightLegPivot);
+
+  // CINTO
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.4), beltMat);
   belt.position.set(0, 0.55, 0);
   playerGroup.add(belt);
-  const buckleMat = new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.8, roughness: 0.2 });
-  const buckleGeo = new THREE.BoxGeometry(0.08, 0.08, 0.05);
-  const buckle = new THREE.Mesh(buckleGeo, buckleMat);
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.05), new THREE.MeshStandardMaterial({ color: 0xccaa44, metalness: 0.8, roughness: 0.2 }));
   buckle.position.set(0, 0.55, 0.2);
   playerGroup.add(buckle);
 
-  const tankMat = new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.3, metalness: 0.7 });
-  for(let side of [-0.2, 0.2]){
-    const tankGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.3, 8);
-    const tank = new THREE.Mesh(tankGeo, tankMat);
-    tank.position.set(side, 0.9, -0.3);
-    tank.rotation.x = 0.1;
+  // CILINDROS DE OXIGÊNIO (costas)
+  const tankMat = new THREE.MeshStandardMaterial({ color: 0x3f4448, roughness: 0.35, metalness: 0.7 });
+  for(const side of [-0.2, 0.2]){
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.75, 10), tankMat);
+    tank.position.set(side, 1.05, -0.32);
+    tank.rotation.x = 0.05;
     tank.castShadow = true;
     playerGroup.add(tank);
-    const capMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6 });
-    const capGeo = new THREE.CylinderGeometry(0.05, 0.07, 0.03, 6);
-    const cap = new THREE.Mesh(capGeo, capMat);
-    cap.position.set(side, 1.05, -0.3);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.05, 8), new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6 }));
+    cap.position.set(side, 1.42, -0.32);
     playerGroup.add(cap);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.081, 0.081, 0.08, 10), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x552200, emissiveIntensity: 0.3 }));
+    stripe.position.set(side, 1.0, -0.32);
+    playerGroup.add(stripe);
   }
-
-  const hoseMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
-  for(let side of [-0.2, 0.2]){
-    const hoseGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.3, 4);
-    const hose = new THREE.Mesh(hoseGeo, hoseMat);
-    hose.position.set(side * 0.7, 0.85, -0.15);
-    hose.rotation.z = side * 0.5;
+  const hoseMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+  for(const side of [-0.2, 0.2]){
+    const hose = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 4), hoseMat);
+    hose.position.set(side * 0.7, 0.95, -0.15);
+    hose.rotation.z = side * 0.6;
     hose.rotation.x = 0.3;
     playerGroup.add(hose);
   }
 
-  const lightMat = new THREE.MeshStandardMaterial({ 
-    color: 0xffeecc, 
-    emissive: 0xffdd44, 
-    emissiveIntensity: 0.3,
-    roughness: 0.3,
-    metalness: 0.5
-  });
-  const lightGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.08, 6);
-  const lightMesh = new THREE.Mesh(lightGeo, lightMat);
-  lightMesh.rotation.x = Math.PI/2;
-  lightMesh.position.set(0, 1.2, 0.3);
-  playerGroup.add(lightMesh);
-  const ringMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7 });
-  const ringGeo = new THREE.TorusGeometry(0.05, 0.015, 6, 8);
-  const ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.rotation.x = Math.PI/2;
-  ring.position.set(0, 1.2, 0.33);
-  playerGroup.add(ring);
-
-  const bagMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.9 });
-  const bagGeo = new THREE.BoxGeometry(0.3, 0.15, 0.1);
-  const bag = new THREE.Mesh(bagGeo, bagMat);
+  const bagMat = new THREE.MeshStandardMaterial({ color: 0x4a3c2e, roughness: 0.9 });
+  const bag = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.1), bagMat);
   bag.position.set(0, 0.7, -0.3);
   playerGroup.add(bag);
 
   playerGroup.position.y = 0;
   playerGroup.visible = true;
+
+  playerGroup.userData = {
+    headParts,
+    leftArmPivot, rightArmPivot, leftLegPivot, rightLegPivot,
+    animT: 0
+  };
+}
+
+function setHeadPartsVisible(v){
+  const ud = playerGroup.userData;
+  if(ud && ud.headParts){ ud.headParts.forEach(m => { if(m) m.visible = v; }); }
+}
+
+function updatePlayerAnimation(dt, moveSpeed, grounded){
+  const ud = playerGroup.userData;
+  if(!ud || !ud.leftArmPivot) return;
+  const moving = moveSpeed > 0.15 && grounded;
+  if(moving){
+    ud.animT += dt * (moveSpeed/WALK_SPEED) * 7.5;
+  } else {
+    ud.animT += dt * 1.5; // leve balanço parado
+  }
+  const amp = moving ? 0.65 : 0.05;
+  const swing = Math.sin(ud.animT) * amp;
+  ud.leftLegPivot.rotation.x = swing;
+  ud.rightLegPivot.rotation.x = -swing;
+  ud.leftArmPivot.rotation.x = -swing * 0.85;
+  ud.rightArmPivot.rotation.x = swing * 0.85;
 }
 
 /* ===== TELA DE MORTE ===== */
@@ -751,6 +758,7 @@ let deathTimer = 0;
 const DEATH_DURATION = 4;
 
 function showDeathScreen(){
+  if(deathActive) return;
   deathActive = true;
   deathTimer = 0;
   const screen = document.getElementById('deathScreen');
@@ -758,16 +766,16 @@ function showDeathScreen(){
   const text = document.getElementById('deathText');
   text.classList.remove('show');
   document.getElementById('deathTimer').textContent = '4';
-  
+
   document.getElementById('hud').style.display = 'none';
   document.getElementById('crosshair').style.display = 'none';
   document.getElementById('pcHint').style.display = 'none';
   document.getElementById('mobileControls').style.display = 'none';
-  
+
   setTimeout(() => {
     text.classList.add('show');
   }, 200);
-  
+
   started = false;
 }
 
@@ -776,7 +784,7 @@ function updateDeathScreen(dt){
   deathTimer += dt;
   const remaining = Math.ceil(DEATH_DURATION - deathTimer);
   document.getElementById('deathTimer').textContent = remaining;
-  
+
   if(deathTimer >= DEATH_DURATION){
     deathActive = false;
     document.getElementById('deathScreen').style.display = 'none';
@@ -787,9 +795,8 @@ function updateDeathScreen(dt){
 /* ===== CUBO ROXO (substitui o cenário) ===== */
 function enterPurpleCube(){
   isInPurpleCube = true;
-  
+
   // DELETA TODO O CENÁRIO
-  // Remove chunks
   for(const [key, c] of chunkMap){
     chunkGroup.remove(c.mesh);
     if(c.mesh.geometry) c.mesh.geometry.dispose();
@@ -797,22 +804,11 @@ function enterPurpleCube(){
   }
   chunkMap.clear();
   saltMap.clear();
-  
-  // Remove anomalia
-  if(blackholeAlive){
-    blackholeAlive = false;
-    while(blackholeGroup.children.length > 0){
-      const child = blackholeGroup.children[0];
-      blackholeGroup.remove(child);
-      if(child.geometry) child.geometry.dispose();
-      if(child.material) child.material.dispose();
-    }
-    if(blackholeGlowLight){
-      scene.remove(blackholeGlowLight);
-      blackholeGlowLight = null;
-    }
-  }
-  
+
+  // Remove todas as anomalias
+  for(const m of monsters){ monstersGroup.remove(m.mesh); disposeMonster(m.mesh); }
+  monsters = [];
+
   // Mostra o cubo roxo
   document.getElementById('purpleCubeOverlay').style.display = 'block';
   document.getElementById('hud').style.display = 'block';
@@ -823,259 +819,240 @@ function enterPurpleCube(){
   if(selectedMode === 'mobile'){
     document.getElementById('mobileControls').style.display = 'block';
   }
-  
+
   // Reseta jogador
   player.position.set(0, EYE_HEIGHT, 0);
   playerGroup.position.copy(player.position);
   playerGroup.position.y -= EYE_HEIGHT;
   playerGroup.rotation.y = yaw;
-  playerGroup.visible = cameraMode === 'third';
   grounded = true;
   velocityY = 0;
   running = false;
-  flying = false;
-  updateFlyUI();
   started = true;
 }
 
-/* ===== BURACO NEGRO (ESFERA ROXA) ===== */
-let blackholeGroup = new THREE.Group();
-scene.add(blackholeGroup);
-let blackholeAlive = false;
-let blackholePos = new THREE.Vector3(0, 0, 0);
-let blackholeGlowLight = null;
-let bhAnimTime = 0;
+/* ===== ANOMALIAS (criaturas humanoides de 3m) ===== */
+const monstersGroup = new THREE.Group();
+scene.add(monstersGroup);
+let monsters = [];
+const MONSTER_CATCH_RADIUS = 2.2;
+const MONSTER_SPEED = 4.6;
+const MONSTER_LOOKAHEAD = 7;
+const MONSTER_COLLISION_RADIUS = 0.55;
+let monsterSpawnTimer = 0;
 
-function createBlackhole(){
-  while(blackholeGroup.children.length > 0){
-    const child = blackholeGroup.children[0];
-    blackholeGroup.remove(child);
-    if(child.geometry) child.geometry.dispose();
-    if(child.material) child.material.dispose();
-  }
-  if(blackholeGlowLight){ scene.remove(blackholeGlowLight); blackholeGlowLight = null; }
+const STRIPE_PALETTE = [0xff2233, 0x22ffbb, 0xffdd22, 0x33aaff, 0xff33cc, 0x88ff22];
 
-  // NÚCLEO - esfera roxa brilhante
-  const coreMat = new THREE.MeshStandardMaterial({
-    color: 0x8800ff,
-    emissive: 0xcc44ff,
-    emissiveIntensity: 3,
-    roughness: 0.1,
-    metalness: 0.9
-  });
-  const core = new THREE.Mesh(new THREE.SphereGeometry(5, 24, 24), coreMat);
-  core.position.y = 0;
-  blackholeGroup.add(core);
+function createMonsterMesh(){
+  const group = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x040404, roughness: 0.9, metalness: 0.05 });
+  let c1 = STRIPE_PALETTE[Math.floor(Math.random()*STRIPE_PALETTE.length)];
+  let c2 = STRIPE_PALETTE[Math.floor(Math.random()*STRIPE_PALETTE.length)];
+  if(c2 === c1) c2 = STRIPE_PALETTE[(STRIPE_PALETTE.indexOf(c1)+2) % STRIPE_PALETTE.length];
+  const stripeMat1 = new THREE.MeshStandardMaterial({ color: c1, emissive: c1, emissiveIntensity: 0.7, roughness: 0.4 });
+  const stripeMat2 = new THREE.MeshStandardMaterial({ color: c2, emissive: c2, emissiveIntensity: 0.7, roughness: 0.4 });
 
-  // ANEIS AO REDOR
-  const ringColors = [0x8800ff, 0xaa44ff, 0x6600cc, 0xcc44ff];
-  for(let i = 0; i < 4; i++){
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: ringColors[i % ringColors.length],
-      transparent: true,
-      opacity: 0.3 + i * 0.05,
-      wireframe: true
-    });
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(6 + i * 2, 0.3, 8, 24),
-      ringMat
-    );
-    ring.rotation.x = Math.PI / 2 + i * 0.3;
-    ring.rotation.z = i * 0.5;
-    ring.position.y = 0;
-    blackholeGroup.add(ring);
+  const legPivots = [];
+  for(const side of [-1, 1]){
+    const pivot = new THREE.Group();
+    pivot.position.set(side*0.09, 0.5, 0);
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.5, 0.07), bodyMat);
+    leg.position.y = -0.25;
+    pivot.add(leg);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.06, 0.09), side<0 ? stripeMat1 : stripeMat2);
+    stripe.position.y = -0.35;
+    pivot.add(stripe);
+    group.add(pivot);
+    legPivots.push(pivot);
   }
 
-  // PARTÍCULAS ORBITAIS
-  const particleMat = new THREE.MeshBasicMaterial({
-    color: 0xaa44ff,
-    transparent: true,
-    opacity: 0.8
-  });
-  for(let i = 0; i < 30; i++){
-    const particle = new THREE.Mesh(
-      new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 4, 4),
-      particleMat
-    );
-    const radius = 7 + Math.random() * 5;
-    const angle = Math.random() * Math.PI * 2;
-    const tilt = (Math.random() - 0.5) * 0.5;
-    particle.position.set(
-      Math.cos(angle) * radius,
-      Math.sin(angle) * radius * tilt,
-      Math.sin(angle) * radius
-    );
-    particle.userData = {
-      radius: radius,
-      angle: angle,
-      tilt: tilt,
-      speed: 0.5 + Math.random() * 0.5
-    };
-    blackholeGroup.add(particle);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.55, 0.14), bodyMat);
+  torso.position.y = 0.775;
+  group.add(torso);
+  const tstripe1 = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.16), stripeMat1);
+  tstripe1.position.y = 0.65;
+  group.add(tstripe1);
+  const tstripe2 = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.16), stripeMat2);
+  tstripe2.position.y = 0.9;
+  group.add(tstripe2);
+
+  const armPivots = [];
+  for(const side of [-1, 1]){
+    const pivot = new THREE.Group();
+    pivot.position.set(side*0.16, 1.02, 0);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.55, 0.055), bodyMat);
+    arm.position.y = -0.275;
+    pivot.add(arm);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.06, 0.07), side<0 ? stripeMat2 : stripeMat1);
+    stripe.position.y = -0.4;
+    pivot.add(stripe);
+    group.add(pivot);
+    armPivots.push(pivot);
   }
 
-  // LUZ GLOW
-  blackholeGlowLight = new THREE.PointLight(0x8800ff, 0, 80);
-  blackholeGlowLight.position.set(0, 0, 0);
-  blackholeGroup.add(blackholeGlowLight);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 10), bodyMat);
+  head.scale.set(1, 1.5, 0.85);
+  head.position.y = 1.18;
+  group.add(head);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  for(const side of [-1, 1]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), eyeMat);
+    eye.position.set(side*0.035, 1.19, 0.09);
+    group.add(eye);
+  }
 
-  blackholeGroup.scale.set(1, 1, 1);
-  blackholeAlive = true;
+  group.scale.set(3, 3, 3); // criatura de ~3 metros
+  group.userData = { legPivots, armPivots, torso, animT: Math.random()*10, phase: Math.random()*Math.PI*2 };
+  return group;
 }
 
-function animateBlackhole(dt, isDay){
-  bhAnimTime += dt;
-  
-  // Pulsa o núcleo
-  const core = blackholeGroup.children[0];
-  if(core && core.material){
-    const pulse = 1 + Math.sin(bhAnimTime * 2) * 0.05;
-    core.scale.set(pulse, pulse, pulse);
-    core.material.emissiveIntensity = 3 + Math.sin(bhAnimTime * 3) * 1.5;
-  }
-  
-  // Anima anéis
-  let ringIndex = 0;
-  blackholeGroup.children.forEach(child => {
-    if(child.geometry && child.geometry.type === 'TorusGeometry'){
-      child.rotation.y += dt * (0.3 + ringIndex * 0.1);
-      child.rotation.x += dt * (0.1 + ringIndex * 0.05);
-      ringIndex++;
-    }
-    if(child.userData && child.userData.radius !== undefined){
-      child.userData.angle += dt * child.userData.speed;
-      const r = child.userData.radius;
-      const a = child.userData.angle;
-      const t = child.userData.tilt;
-      child.position.x = Math.cos(a) * r;
-      child.position.z = Math.sin(a) * r;
-      child.position.y = Math.sin(a) * r * t * 0.5;
-      // Brilho pisca
-      if(child.material){
-        child.material.opacity = 0.5 + Math.sin(bhAnimTime * 2 + a) * 0.3;
-      }
-    }
+function disposeMonster(group){
+  group.traverse(o=>{
+    if(o.geometry) o.geometry.dispose();
+    if(o.material){ if(Array.isArray(o.material)) o.material.forEach(mm=>mm.dispose()); else o.material.dispose(); }
   });
-  
-  // GLOW
-  if(blackholeGlowLight){
-    blackholeGlowLight.intensity = 20 + Math.sin(bhAnimTime * 2) * 10;
-    blackholeGlowLight.distance = 80 + Math.sin(bhAnimTime * 1.5) * 20;
-    const hue = (Math.sin(bhAnimTime * 0.3) * 0.1 + 0.75);
-    blackholeGlowLight.color.setHSL(hue, 1, 0.5);
-  }
 }
 
-function spawnBlackhole(playerPos){
-  const angle = Math.random() * Math.PI * 2;
-  const spawnDist = ACTIVE_RADIUS - 200;
-  const dist = spawnDist + (Math.random() - 0.5) * 100;
-  const spawnX = playerPos.x + Math.cos(angle) * dist;
-  const spawnZ = playerPos.z + Math.sin(angle) * dist;
-  const layerY = Math.round(playerPos.y / LAYER_HEIGHT) * LAYER_HEIGHT;
-  blackholePos.set(spawnX, layerY + 2, spawnZ);
-  blackholeGroup.position.copy(blackholePos);
-  if(!blackholeAlive){ createBlackhole(); }
-  blackholeAlive = true;
-  bhAnimTime = 0;
+function spawnMonster(nearPos){
+  const angle = Math.random()*Math.PI*2;
+  const dist = 40 + Math.random()*220;
+  const x = nearPos.x + Math.cos(angle)*dist;
+  const z = nearPos.z + Math.sin(angle)*dist;
+  const layerY = Math.round(nearPos.y/LAYER_HEIGHT)*LAYER_HEIGHT;
+  const mesh = createMonsterMesh();
+  mesh.position.set(x, layerY + 0.05, z);
+  monstersGroup.add(mesh);
+  monsters.push({
+    mesh,
+    pos: new THREE.Vector3(x, layerY + 0.05, z),
+    dir: new THREE.Vector3(0,0,1),
+    commitTimer: 0,
+    stuckTimer: 0,
+    stuckCheckPos: new THREE.Vector3(x, layerY, z)
+  });
 }
 
-function updateBlackhole(dt, playerPos, isDay, playerSpeed){
-  if(!menuConfig.anomalia || isInPurpleCube){
-    if(blackholeAlive){
-      blackholeAlive = false;
-      while(blackholeGroup.children.length > 0){
-        const child = blackholeGroup.children[0];
-        blackholeGroup.remove(child);
-        if(child.geometry) child.geometry.dispose();
-        if(child.material) child.material.dispose();
-      }
-      if(blackholeGlowLight){ scene.remove(blackholeGlowLight); blackholeGlowLight = null; }
-    }
-    return;
-  }
-  if(!blackholeAlive || deathActive) return;
-  
-  animateBlackhole(dt, isDay);
-  
-  const dx = playerPos.x - blackholePos.x;
-  const dz = playerPos.z - blackholePos.z;
-  const dy = playerPos.y - blackholePos.y;
-  const dist = Math.hypot(dx, dy, dz);
-  
-  const currentLayer = Math.round(playerPos.y / LAYER_HEIGHT);
-  const bhLayer = Math.round(blackholePos.y / LAYER_HEIGHT);
-  
-  if(currentLayer !== bhLayer){
-    blackholePos.y += (currentLayer * LAYER_HEIGHT + 2 - blackholePos.y) * 0.05;
-  }
-  
-  if(dist > ACTIVE_RADIUS - 100){
-    spawnBlackhole(playerPos);
-    return;
-  }
-  
-  // Move em direção ao jogador
-  const speed = playerSpeed * 0.8;
-  const moveSpeed = Math.min(speed * dt * 1.2, dist * 0.3);
-  
-  if(dist > 1){
-    const normX = dx / dist;
-    const normY = dy / dist;
-    const normZ = dz / dist;
-    
-    blackholePos.x += normX * moveSpeed;
-    blackholePos.y += normY * moveSpeed * 0.2;
-    blackholePos.z += normZ * moveSpeed;
-    
-    blackholeGroup.position.copy(blackholePos);
-  }
-  
-  // ===== PUXA ESTRUTURAS (buraco negro) =====
-  const pullRadius = BLACKHOLE_PULL_RADIUS;
-  const toRemove = [];
-  for(const [key, c] of chunkMap){
-    const cx = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
-    const cz = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
-    const cy = c.layer * LAYER_HEIGHT;
-    const d = Math.hypot(cx - blackholePos.x, cz - blackholePos.z, cy - blackholePos.y);
-    
-    const isGround = Math.abs(cy - (c.layer * LAYER_HEIGHT)) < 2;
-    
-    if(d < pullRadius && c.state === 'active' && !isGround){
-      toRemove.push(key);
-    }
-    if(isGround && c.layer === currentLayer + 1 && d < pullRadius){
-      toRemove.push(key);
-    }
-  }
-  
-  for(const key of toRemove){
-    const c = chunkMap.get(key);
-    if(c){
-      // Fade roxo antes de sumir
-      const mesh = c.mesh;
-      if(mesh && mesh.material){
-        const purple = new THREE.Color(0x8800ff);
-        mesh.material.color.lerp(purple, 0.9);
-        mesh.material.emissive = new THREE.Color(0x8800ff);
-        mesh.material.emissiveIntensity = 2;
-        mesh.material.opacity = 0.3;
-        mesh.material.transparent = true;
-        mesh.material.needsUpdate = true;
-      }
-      chunkGroup.remove(c.mesh);
-      c.mesh.geometry.dispose();
-      c.mesh.material.dispose();
-      chunkMap.delete(key);
-      saltMap.set(key, (saltMap.get(key)||0) + 1);
-    }
-  }
-  
-  // ===== ZONA DE MORTE =====
-  if(dist < BLACKHOLE_DEATH_RADIUS && !deathActive){
+function targetMonsterCount(){
+  if(isInPurpleCube) return 0;
+  const density = menuConfig.difficulty || 0;
+  if(density <= 0) return 0;
+  const ringUnits = 260/50; // ~5.2 unidades de 50m dentro do raio de spawn
+  return Math.min(60, Math.round(density*ringUnits));
+}
+
+const _mcOrigin = new THREE.Vector3();
+const _mcDown = new THREE.Vector3(0,-1,0);
+
+function stepMonster(m, dt, playerPos){
+  if(deathActive) return;
+  const dx = playerPos.x - m.pos.x;
+  const dz = playerPos.z - m.pos.z;
+  const distToPlayer = Math.hypot(dx, dz);
+
+  if(distToPlayer < MONSTER_CATCH_RADIUS){
     showDeathScreen();
+    return;
   }
+
+  const desired = new THREE.Vector3(dx, 0, dz);
+  if(desired.lengthSq() > 0.0001) desired.normalize(); else desired.set(0,0,1);
+
+  m.commitTimer -= dt;
+  if(m.commitTimer <= 0){
+    const candidates = [0, 0.35, -0.35, 0.7, -0.7, 1.1, -1.1, 1.6, -1.6, Math.PI];
+    let chosen = null;
+    for(const off of candidates){
+      const ang = Math.atan2(desired.x, desired.z) + off;
+      const dir = new THREE.Vector3(Math.sin(ang), 0, Math.cos(ang));
+      _mcOrigin.set(m.pos.x, m.pos.y + 1.0, m.pos.z);
+      raycaster.set(_mcOrigin, dir);
+      raycaster.far = MONSTER_LOOKAHEAD;
+      const hits = raycaster.intersectObjects(chunkGroup.children, false);
+      if(hits.length === 0 || hits[0].distance > 2.0){
+        chosen = dir;
+        break;
+      }
+    }
+    if(!chosen) chosen = desired.clone();
+    m.dir.copy(chosen);
+    m.commitTimer = 0.5 + Math.random()*0.4;
+  }
+
+  m.stuckTimer += dt;
+  if(m.stuckTimer > 1.2){
+    const moved = Math.hypot(m.pos.x - m.stuckCheckPos.x, m.pos.z - m.stuckCheckPos.z);
+    if(moved < 0.6){
+      const ang = Math.atan2(m.dir.x, m.dir.z) + (Math.random()<0.5?1:-1)*(1.6+Math.random()*1.2);
+      m.dir.set(Math.sin(ang), 0, Math.cos(ang));
+      m.commitTimer = 0.8;
+    }
+    m.stuckTimer = 0;
+    m.stuckCheckPos.set(m.pos.x, m.pos.y, m.pos.z);
+  }
+
+  let moveDist = MONSTER_SPEED*dt;
+  _mcOrigin.set(m.pos.x, m.pos.y + 1.0, m.pos.z);
+  raycaster.set(_mcOrigin, m.dir);
+  raycaster.far = MONSTER_COLLISION_RADIUS + moveDist + 0.05;
+  const hits2 = raycaster.intersectObjects(chunkGroup.children, false);
+  if(hits2.length > 0){
+    const allowed = Math.max(0, hits2[0].distance - MONSTER_COLLISION_RADIUS - 0.02);
+    moveDist = Math.min(moveDist, allowed);
+  }
+  m.pos.x += m.dir.x*moveDist;
+  m.pos.z += m.dir.z*moveDist;
+
+  _mcOrigin.set(m.pos.x, m.pos.y + 3, m.pos.z);
+  raycaster.set(_mcOrigin, _mcDown);
+  raycaster.far = 10;
+  const gh = raycaster.intersectObjects(chunkGroup.children, false);
+  if(gh.length > 0){
+    m.pos.y += (gh[0].point.y - m.pos.y) * 0.35;
+  } else {
+    const targetY = Math.round(playerPos.y/LAYER_HEIGHT) * LAYER_HEIGHT;
+    m.pos.y += (targetY - m.pos.y) * 0.02;
+  }
+
+  m.mesh.position.copy(m.pos);
+  m.mesh.rotation.y = Math.atan2(m.dir.x, m.dir.z);
+
+  const ud = m.mesh.userData;
+  ud.animT += dt*6.5;
+  const swing = Math.sin(ud.animT)*0.85;
+  ud.legPivots[0].rotation.x = swing;
+  ud.legPivots[1].rotation.x = -swing;
+  ud.armPivots[0].rotation.x = -swing*0.7 + Math.sin(ud.animT*2.3+ud.phase)*0.15;
+  ud.armPivots[1].rotation.x = swing*0.7 + Math.sin(ud.animT*2.7+ud.phase)*0.15;
+  ud.torso.rotation.z = Math.sin(ud.animT*0.5+ud.phase)*0.04;
+}
+
+function updateMonsters(dt, playerPos){
+  if(isInPurpleCube || (menuConfig.difficulty||0) <= 0){
+    if(monsters.length > 0){
+      for(const m of monsters){ monstersGroup.remove(m.mesh); disposeMonster(m.mesh); }
+      monsters = [];
+    }
+    return;
+  }
+
+  monsterSpawnTimer -= dt;
+  const target = targetMonsterCount();
+  if(monsterSpawnTimer <= 0){
+    monsterSpawnTimer = 0.4;
+    if(monsters.length < target) spawnMonster(playerPos);
+  }
+
+  for(let i=monsters.length-1; i>=0; i--){
+    const m = monsters[i];
+    const d = Math.hypot(m.pos.x-playerPos.x, m.pos.z-playerPos.z);
+    if(d > 340){
+      monstersGroup.remove(m.mesh);
+      disposeMonster(m.mesh);
+      monsters.splice(i,1);
+    }
+  }
+
+  for(const m of monsters){ stepMonster(m, dt, playerPos); }
 }
 
 /* ---------------- GEOMETRY ---------------- */
@@ -1120,7 +1097,7 @@ function grimeColor(rng){
   return c;
 }
 
-/* ---------------- CHUNK ---------------- */
+/* ---------------- CHUNK (mais rotas, ainda caotico) ---------------- */
 function shaftForChunk(cx, cz, layer){
   if(cx===0 && cz===0 && layer===0) return null;
   const per = Math.max(1, Math.round(HOLE_SPACING/CHUNK_SIZE));
@@ -1196,22 +1173,22 @@ function genTunnel(boxes, ox, oz, layerY, rng){
 }
 
 function genWall(boxes, ox, oz, layerY, rng){
-  const alongX=rng()<0.5; const h=10+rng()*55, len=CHUNK_SIZE*(0.5+rng()*0.45), thickness=1.5+rng()*4; const offsetFrac=rng()*0.4, lateralFrac=rng()*0.6;
+  const alongX=rng()<0.5; const h=10+rng()*55, len=CHUNK_SIZE*(0.4+rng()*0.35), thickness=1.5+rng()*4; const offsetFrac=rng()*0.4, lateralFrac=rng()*0.6;
   if(alongX){ boxes.push(box(ox+CHUNK_SIZE*offsetFrac+len/2, layerY+h/2, oz+CHUNK_SIZE*lateralFrac, len, h, thickness, structColor(rng))); if(rng()<0.5){ boxes.push(box(ox+CHUNK_SIZE*offsetFrac+len/2, layerY+h/2, oz+CHUNK_SIZE*lateralFrac+5, len, h*0.6, thickness*0.7, grimeColor(rng))); } }
   else { boxes.push(box(ox+CHUNK_SIZE*lateralFrac, layerY+h/2, oz+CHUNK_SIZE*offsetFrac+len/2, thickness, h, len, structColor(rng))); if(rng()<0.5){ boxes.push(box(ox+CHUNK_SIZE*lateralFrac+5, layerY+h/2, oz+CHUNK_SIZE*offsetFrac+len/2, thickness*0.7, h*0.6, len, grimeColor(rng))); } }
 }
 
 function genPillarfield(boxes, ox, oz, layerY, rng){
-  const gridN=5+Math.floor(rng()*4), spacing=5+rng()*8; const cx=ox+CHUNK_SIZE*(0.1+rng()*0.6)-(gridN*spacing)/2; const cz=oz+CHUNK_SIZE*(0.1+rng()*0.6)-(gridN*spacing)/2;
-  for(let i=0;i<gridN;i++){ for(let j=0;j<gridN;j++){ const h=8+rng()*70, pR=0.8+rng()*2.5, jitterX=(rng()-0.5)*6, jitterZ=(rng()-0.5)*6; boxes.push(box(cx+i*spacing+jitterX, layerY+h/2, cz+j*spacing+jitterZ, pR, h, pR, structColor(rng))); if(rng()<0.3){ boxes.push(box(cx+i*spacing+jitterX, layerY+h*0.7, cz+j*spacing+jitterZ, pR*3, 0.8, pR*3, grimeColor(rng))); } } }
+  const gridN=4+Math.floor(rng()*4), spacing=7+rng()*7; const cx=ox+CHUNK_SIZE*(0.1+rng()*0.6)-(gridN*spacing)/2; const cz=oz+CHUNK_SIZE*(0.1+rng()*0.6)-(gridN*spacing)/2;
+  for(let i=0;i<gridN;i++){ for(let j=0;j<gridN;j++){ const h=8+rng()*70, pR=0.8+rng()*1.8, jitterX=(rng()-0.5)*6, jitterZ=(rng()-0.5)*6; boxes.push(box(cx+i*spacing+jitterX, layerY+h/2, cz+j*spacing+jitterZ, pR, h, pR, structColor(rng))); if(rng()<0.3){ boxes.push(box(cx+i*spacing+jitterX, layerY+h*0.7, cz+j*spacing+jitterZ, pR*3, 0.8, pR*3, grimeColor(rng))); } } }
   if(rng()<0.7){ const platY=layerY+6+rng()*55; boxes.push(box(cx+(gridN*spacing)/2, platY, cz+(gridN*spacing)/2, gridN*spacing+12, 1.2+rng()*3, gridN*spacing+12, structColor(rng))); }
 }
 
 function genClutterAndPiercers(boxes, ox, oz, layerY, rng, count){
-  const clutterCount=count*6;
+  const clutterCount=Math.round(count*4);
   for(let i=0;i<clutterCount;i++){ const s=0.5+rng()*5; const x=ox+rng()*CHUNK_SIZE, z=oz+rng()*CHUNK_SIZE; const y=layerY+rng()*rng()*55; boxes.push(box(x, y+s/2, z, s*(0.3+rng()), s*(0.3+rng()*3), s*(0.3+rng()), grimeColor(rng))); }
-  const piercers=3+Math.floor(rng()*5);
-  for(let i=0;i<piercers;i++){ const alongX=rng()<0.5; const y=layerY+0.5+rng()*70; const thickness=0.8+rng()*4, width=1.5+rng()*10, pos=rng()*CHUNK_SIZE; if(alongX){ boxes.push(box(ox+CHUNK_SIZE/2, y, oz+pos, CHUNK_SIZE*1.3, thickness, width, grimeColor(rng))); } else { boxes.push(box(ox+pos, y, oz+CHUNK_SIZE/2, width, thickness, CHUNK_SIZE*1.3, grimeColor(rng))); } }
+  const piercers=2+Math.floor(rng()*4);
+  for(let i=0;i<piercers;i++){ const alongX=rng()<0.5; const y=layerY+0.5+rng()*70; const thickness=0.8+rng()*3.5, width=1.5+rng()*9, pos=rng()*CHUNK_SIZE; if(alongX){ boxes.push(box(ox+CHUNK_SIZE/2, y, oz+pos, CHUNK_SIZE*1.3, thickness, width, grimeColor(rng))); } else { boxes.push(box(ox+pos, y, oz+CHUNK_SIZE/2, width, thickness, CHUNK_SIZE*1.3, grimeColor(rng))); } }
 }
 
 function generateChunkBoxes(cx, cz, layerIndex, salt, isSpawn){
@@ -1226,21 +1203,22 @@ function generateChunkBoxes(cx, cz, layerIndex, salt, isSpawn){
   if(isSpawn && layerIndex === 0){
     genBuildings(structs, ox, oz, layerY, rng, 2);
     genPillarfield(structs, ox, oz, layerY, rng);
-    genClutterAndPiercers(structs, ox, oz, layerY, rng, 6);
-    if(rng()<0.8) genWall(structs, ox, oz, layerY, rng);
-    if(rng()<0.7) genTunnel(structs, ox, oz, layerY, rng);
-    if(rng()<0.5) genBridge(structs, ox, oz, layerY, rng);
+    genClutterAndPiercers(structs, ox, oz, layerY, rng, 5);
+    genTunnel(structs, ox, oz, layerY, rng);
+    if(rng()<0.45) genWall(structs, ox, oz, layerY, rng);
+    if(rng()<0.6) genBridge(structs, ox, oz, layerY, rng);
   } else {
     genBuildings(structs, ox, oz, layerY, rng, 5);
     genPillarfield(structs, ox, oz, layerY, rng);
-    if(rng()<0.8) genWall(structs, ox, oz, layerY, rng);
-    if(rng()<0.7) genTunnel(structs, ox, oz, layerY, rng);
-    if(rng()<0.9) genBridge(structs, ox, oz, layerY, rng);
-    if(rng()<0.5) genBridge(structs, ox, oz, layerY, rng);
+    // sempre pelo menos um corredor livre, com boa chance de um segundo cruzando
+    genTunnel(structs, ox, oz, layerY, rng);
+    if(rng()<0.55) genTunnel(structs, ox, oz, layerY, rng);
+    genBridge(structs, ox, oz, layerY, rng);
+    if(rng()<0.55) genBridge(structs, ox, oz, layerY, rng);
     if(rng()<0.35) genMegastructure(structs, ox, oz, layerY, rng);
-    genClutterAndPiercers(structs, ox, oz, layerY, rng, 12);
-    if(rng()<0.6) genWall(structs, ox, oz, layerY, rng);
-    if(rng()<0.5) genTunnel(structs, ox, oz, layerY, rng);
+    genClutterAndPiercers(structs, ox, oz, layerY, rng, 9);
+    if(rng()<0.45) genWall(structs, ox, oz, layerY, rng);
+    if(rng()<0.3) genWall(structs, ox, oz, layerY, rng);
   }
   if(holeHere || holeAbove){ structs = structs.filter(b => outsideShaft(b, holeHere, SHAFT_CLEAR) && outsideShaft(b, holeAbove, SHAFT_CLEAR)); }
   for(let i=0;i<structs.length;i++) boxes.push(structs[i]);
@@ -1428,7 +1406,7 @@ function toggleFlashlight(){
 
 function updateFlashlight(){
   const pos = player.position.clone();
-  pos.y += 1.2;
+  pos.y += 0.5; // origem proxima ao capacete
   flashlight.position.copy(pos);
   const target = new THREE.Vector3(0, 0, -100);
   target.applyQuaternion(camera.quaternion);
@@ -1446,52 +1424,40 @@ let grounded = true;
 let running = false;
 let wantsJump = false;
 let fallStartY = null;
-let flying = false;
 
 const raycaster = new THREE.Raycaster();
 const _fwd = new THREE.Vector3(), _right = new THREE.Vector3();
-const _flyDir = new THREE.Vector3(), _flyEuler = new THREE.Euler();
 const _moveVec = new THREE.Vector3(), _originVec = new THREE.Vector3();
 
-function setFlying(value){
-  flying = value;
-  fallStartY = null;
-  if(flying){ velocityY = 0; grounded = false; }
-  else { velocityY = 0; }
-  updateFlyUI();
-}
-
 function updateThirdPersonCamera(){
-  const pos = player.position.clone();
-  pos.y += 1.0;
-  
-  // Direção para trás do jogador
-  const backDir = new THREE.Vector3(0, 0, 1);
-  backDir.applyQuaternion(camera.quaternion);
-  
-  // Posição da câmera (atrás e levemente acima)
-  const camPos = pos.clone().add(backDir.multiplyScalar(THIRD_PERSON_DISTANCE));
-  camPos.y += THIRD_PERSON_HEIGHT;
-  
-  // Colisão da câmera
-  if(!isInPurpleCube){
-    const dirToPlayer = new THREE.Vector3().copy(pos).sub(camPos).normalize();
-    const distToPlayer = pos.distanceTo(camPos);
-    raycaster.set(camPos, dirToPlayer);
-    raycaster.far = distToPlayer + 0.5;
+  const feet = player.position.y - EYE_HEIGHT;
+  const pivot = new THREE.Vector3(player.position.x, feet + 1.3, player.position.z);
+
+  const cp = Math.max(THIRD_PERSON_PITCH_MIN, Math.min(THIRD_PERSON_PITCH_MAX, pitch));
+  const cosP = Math.cos(cp);
+  const sinP = Math.sin(cp);
+  const backX = Math.sin(yaw) * THIRD_PERSON_DISTANCE * cosP;
+  const backZ = Math.cos(yaw) * THIRD_PERSON_DISTANCE * cosP;
+  const upY = -sinP * THIRD_PERSON_DISTANCE + 1.0;
+
+  const camPosTarget = new THREE.Vector3(pivot.x + backX, pivot.y + upY, pivot.z + backZ);
+
+  let finalPos = camPosTarget;
+  const dir = camPosTarget.clone().sub(pivot);
+  const dist = dir.length();
+  if(dist > 0.001){
+    dir.normalize();
+    raycaster.set(pivot, dir);
+    raycaster.far = dist;
     const hits = raycaster.intersectObjects(chunkGroup.children, false);
-    if(hits.length > 0 && hits[0].distance < distToPlayer){
-      const newDist = Math.max(0.5, hits[0].distance - 0.3);
-      const newPos = camPos.clone().add(dirToPlayer.clone().multiplyScalar(newDist));
-      camera.position.copy(newPos);
-    } else {
-      camera.position.copy(camPos);
+    if(hits.length > 0 && hits[0].distance < dist){
+      const newDist = Math.max(1.2, hits[0].distance - 0.3);
+      finalPos = pivot.clone().add(dir.multiplyScalar(newDist));
     }
-  } else {
-    camera.position.copy(camPos);
   }
-  
-  camera.lookAt(pos);
+
+  camera.position.copy(finalPos);
+  camera.lookAt(pivot.x, pivot.y + 0.3, pivot.z);
 }
 
 function updateFirstPersonCamera(){
@@ -1502,56 +1468,15 @@ function updateFirstPersonCamera(){
 function updateCamera(){
   if(cameraMode === 'third'){
     updateThirdPersonCamera();
-    if(!isInPurpleCube) playerGroup.visible = true;
+    playerGroup.visible = true;
+    setHeadPartsVisible(true);
     document.getElementById('crosshair').style.display = 'none';
   } else {
     updateFirstPersonCamera();
-    playerGroup.visible = false;
+    playerGroup.visible = true;
+    setHeadPartsVisible(false); // ve o proprio corpo ao olhar pra baixo, menos a cabeça
     document.getElementById('crosshair').style.display = 'block';
   }
-}
-
-function updateFlight(dt, inForward, inStrafe, ascend, descend){
-  _flyEuler.set(pitch, yaw, 0, 'YXZ');
-  _flyDir.set(0,0,-1).applyEuler(_flyEuler);
-  _right.set(Math.cos(yaw), 0, -Math.sin(yaw));
-
-  let mx = _flyDir.x*inForward + _right.x*inStrafe;
-  let my = _flyDir.y*inForward;
-  let mz = _flyDir.z*inForward + _right.z*inStrafe;
-  if(ascend) my += 1;
-  if(descend) my -= 1;
-
-  const len = Math.hypot(mx,my,mz);
-  if(len > 1e-6){ mx/=len; my/=len; mz/=len; } else { mx=0; my=0; mz=0; }
-
-  let dx = mx*FLY_SPEED*dt, dy = my*FLY_SPEED*dt, dz = mz*FLY_SPEED*dt;
-  const moveDist = Math.hypot(dx,dy,dz);
-
-  if(moveDist > 1e-6){
-    _moveVec.set(dx,dy,dz).normalize();
-    _originVec.copy(player.position);
-    raycaster.set(_originVec, _moveVec);
-    raycaster.far = PLAYER_RADIUS + moveDist + 0.05;
-    const hits = raycaster.intersectObjects(chunkGroup.children, false);
-    if(hits.length>0){
-      const allowed = Math.max(0, hits[0].distance - PLAYER_RADIUS - 0.02);
-      if(allowed < moveDist){
-        const scale = moveDist>0 ? allowed/moveDist : 0;
-        dx*=scale; dy*=scale; dz*=scale;
-      }
-    }
-  }
-
-  player.position.x += dx;
-  player.position.y += dy;
-  player.position.z += dz;
-
-  playerGroup.position.copy(player.position);
-  playerGroup.position.y -= EYE_HEIGHT;
-  playerGroup.rotation.y = yaw;
-
-  updateCamera();
 }
 
 function updatePhysics(dt, inForward, inStrafe){
@@ -1592,7 +1517,10 @@ function updatePhysics(dt, inForward, inStrafe){
 
   velocityY += GRAVITY*dt;
   if(velocityY < -MAX_FALL_SPEED) velocityY = -MAX_FALL_SPEED;
-  if(wantsJump && grounded){ velocityY = JUMP_SPEED; grounded = false; }
+  if(wantsJump && grounded){
+    velocityY = running ? JUMP_SPEED_RUN : JUMP_SPEED_NORMAL;
+    grounded = false;
+  }
   wantsJump = false;
   player.position.y += velocityY*dt;
 
@@ -1626,7 +1554,10 @@ function updatePhysics(dt, inForward, inStrafe){
   playerGroup.rotation.y = yaw;
 
   updateCamera();
-  
+
+  const moveSpeedNow = Math.hypot(dx,dz)/Math.max(dt,0.0001);
+  updatePlayerAnimation(dt, moveSpeedNow, grounded);
+
   const currentLayer = getLayerFromY(player.position.y);
   document.getElementById('hudLayer').textContent = currentLayer;
 }
@@ -1638,9 +1569,8 @@ let pointerLocked = false;
 
 window.addEventListener('keydown', (e)=>{
   keys[e.code] = true;
-  if(e.code==='Space'){ if(!flying) wantsJump = true; e.preventDefault(); }
+  if(e.code==='Space'){ wantsJump = true; e.preventDefault(); }
   if(e.code==='KeyQ'){ running = true; }
-  if(e.code==='KeyE' && !e.repeat){ setFlying(!flying); }
   if(e.code==='KeyF' && !e.repeat){ toggleFlashlight(); }
   if(e.code==='KeyR' && !e.repeat){ toggleCamera(); }
 });
@@ -1677,10 +1607,8 @@ const joystickKnob = document.getElementById('joystickKnob');
 const camLookZone = document.getElementById('camLookZone');
 const btnJump = document.getElementById('btnJump');
 const btnRun = document.getElementById('btnRun');
-const btnFly = document.getElementById('btnFly');
 const btnFlashlight = document.getElementById('btnFlashlight');
 const btnCamera = document.getElementById('btnCamera');
-let flyUpHeld = false, flyDownHeld = false;
 
 let joyActive = false, joyId = null, joyVec = {x:0,y:0};
 let lookId = null, lookLast = {x:0,y:0};
@@ -1746,22 +1674,13 @@ camLookZone.addEventListener('touchcancel', endLook);
 
 btnJump.addEventListener('touchstart', (e)=>{
   e.preventDefault();
-  if(flying){ flyUpHeld = true; } else { wantsJump = true; }
+  wantsJump = true;
 }, {passive:false});
-btnJump.addEventListener('touchend', (e)=>{ e.preventDefault(); flyUpHeld = false; }, {passive:false});
-btnJump.addEventListener('touchcancel', (e)=>{ flyUpHeld = false; });
 
 btnRun.addEventListener('touchstart', (e)=>{
   e.preventDefault();
-  if(flying){ flyDownHeld = true; }
-  else { running = !running; btnRun.classList.toggle('active', running); }
-}, {passive:false});
-btnRun.addEventListener('touchend', (e)=>{ e.preventDefault(); if(flying) flyDownHeld = false; }, {passive:false});
-btnRun.addEventListener('touchcancel', (e)=>{ flyDownHeld = false; });
-
-btnFly.addEventListener('touchstart', (e)=>{
-  e.preventDefault();
-  setFlying(!flying);
+  running = !running;
+  btnRun.classList.toggle('active', running);
 }, {passive:false});
 
 btnFlashlight.addEventListener('touchstart', (e)=>{
@@ -1776,21 +1695,6 @@ btnCamera.addEventListener('touchstart', (e)=>{
 
 function mobileInputVector(){
   return { f: -joyVec.y, s: joyVec.x };
-}
-
-function updateFlyUI(){
-  if(btnFly) btnFly.classList.toggle('active', flying);
-  if(btnJump) btnJump.textContent = flying ? '⬆ SUBIR' : '⬆ PULAR';
-  if(btnRun){
-    btnRun.textContent = flying ? '⬇ DESCER' : '🏃 CORRER';
-    if(flying) btnRun.classList.remove('active');
-    else btnRun.classList.toggle('active', running);
-  }
-  if(pcHint){
-    pcHint.textContent = flying
-      ? 'WASD mover · ESPAÇO subir · SHIFT descer · E parar voar · F lanterna · R câmera'
-      : 'WASD mover · Q correr · E voar · F lanterna · R câmera · MOUSE olhar';
-  }
 }
 
 /* ---------------- START ---------------- */
@@ -1840,7 +1744,6 @@ function initialLoadStep(){
     if(mode==='pc'){ crosshair.style.display='block'; pcHint.style.display='block'; }
     if(mode==='mobile'){ mobileControls.style.display='block'; }
     gameStartTime = performance.now();
-    if(menuConfig.anomalia && !isInPurpleCube) spawnBlackhole(player.position);
     cameraMode = 'third';
     playerGroup.visible = true;
     document.getElementById('hudCamMode').textContent = '3ª PESSOA';
@@ -1851,13 +1754,13 @@ function initialLoadStep(){
 let gameStartTime = null;
 
 function beginGame(selectedMode){
-  ACTIVE_RADIUS = menuConfig.renderDistance;
+  ACTIVE_RADIUS = 1000;
   UNLOAD_RADIUS = ACTIVE_RADIUS + UNLOAD_MARGIN;
   DAY_DURATION = menuConfig.cycleDuration;
   NIGHT_DURATION = menuConfig.cycleDuration;
   CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
   scene.fog = new THREE.Fog(0x1a1a2e, Math.min(80, ACTIVE_RADIUS*0.1), ACTIVE_RADIUS+100);
-  
+
   mode = selectedMode;
   isInPurpleCube = false;
   document.getElementById('menuScreen').style.display = 'none';
@@ -1874,7 +1777,8 @@ function beginGame(selectedMode){
   document.getElementById('deathScreen').style.display = 'none';
   loadingComplete = false;
   started = false;
-  
+  monsterSpawnTimer = 0;
+
   createPlayer();
   playerGroup.position.copy(player.position);
   playerGroup.position.y -= EYE_HEIGHT;
@@ -1882,7 +1786,7 @@ function beginGame(selectedMode){
   playerGroup.visible = true;
   cameraMode = 'third';
   document.getElementById('hudCamMode').textContent = '3ª PESSOA';
-  
+
   chunkMap.clear();
   saltMap.clear();
   while(chunkGroup.children.length > 0){
@@ -1891,15 +1795,10 @@ function beginGame(selectedMode){
     if(child.geometry) child.geometry.dispose();
     if(child.material) child.material.dispose();
   }
-  blackholeAlive = false;
-  while(blackholeGroup.children.length > 0){
-    const child = blackholeGroup.children[0];
-    blackholeGroup.remove(child);
-    if(child.geometry) child.geometry.dispose();
-    if(child.material) child.material.dispose();
-  }
-  if(blackholeGlowLight){ scene.remove(blackholeGlowLight); blackholeGlowLight = null; }
-  
+
+  for(const m of monsters){ monstersGroup.remove(m.mesh); disposeMonster(m.mesh); }
+  monsters = [];
+
   animate();
 }
 
@@ -1928,25 +1827,15 @@ function animate(){
 
   isDay = updateDayNight(dt);
   const inVec = mode==='pc' ? pcInputVector() : mobileInputVector();
-  
-  if(flying){
-    const ascend = mode==='pc' ? !!keys['Space'] : flyUpHeld;
-    const descend = mode==='pc' ? !!(keys['ShiftLeft']||keys['ShiftRight']||keys['ControlLeft']) : flyDownHeld;
-    updateFlight(dt, inVec.f, inVec.s, ascend, descend);
-  } else {
-    updatePhysics(dt, inVec.f, inVec.s);
-  }
 
-  let currentSpeed = 0;
-  if(flying){ currentSpeed = FLY_SPEED; }
-  else { currentSpeed = WALK_SPEED * (running ? RUN_MULT : 1); }
+  updatePhysics(dt, inVec.f, inVec.s);
 
   updateFlashlight();
-  updateBlackhole(dt, player.position, isDay, currentSpeed);
 
   _fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));
   updateStreaming(player.position.x, player.position.y, player.position.z, _fwd.x, _fwd.z, 2);
   animateChunks(dt);
+  updateMonsters(dt, player.position);
 
   const elapsed = performance.now() - gameStartTime;
   hudTime.textContent = formatTimeHud(elapsed);
