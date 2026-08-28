@@ -621,12 +621,12 @@ const fillLight = new THREE.DirectionalLight(0x446688, 0.3);
 fillLight.position.set(-160,120,-140);
 scene.add(fillLight);
 
-/* ===== LANTERNA (no capacete, sem sombra pra economizar performance) ===== */
-const flashlight = new THREE.SpotLight(0xffeedd, 0);
+/* ===== LANTERNA (amarela suave) ===== */
+const flashlight = new THREE.SpotLight(0xffdd77, 0);
 flashlight.angle = 0.48;
-flashlight.penumbra = 0.3;
-flashlight.decay = 1;
-flashlight.distance = 150;
+flashlight.penumbra = 0.5;
+flashlight.decay = 1.5;
+flashlight.distance = 120;
 flashlight.position.set(0, 1.2, 0);
 flashlight.target.position.set(0, 1.2, -100);
 flashlight.castShadow = false;
@@ -918,7 +918,17 @@ function addBlock(shape,color){ const k=invKey(shape,color); inventory[k]=(inven
 function invCount(shape,color){ return inventory[invKey(shape,color)]||0; }
 
 function rewardBlocks(duration){
-  const count = Math.max(1, Math.round(duration/8));
+  // Recompensa justa baseada no tempo de destruição
+  let count = 1;
+  if (duration >= 40) count = 8;
+  else if (duration >= 35) count = 7;
+  else if (duration >= 30) count = 6;
+  else if (duration >= 25) count = 5;
+  else if (duration >= 20) count = 4;
+  else if (duration >= 15) count = 3;
+  else if (duration >= 10) count = 2;
+  else count = 1;
+  
   for(let i=0;i<count;i++){ addBlock(randomShape(), randomColor()); }
   showToast('+'+count+' blocos coletados');
   if(inventoryPanelOpen) renderInventoryPanel();
@@ -1035,7 +1045,9 @@ document.getElementById('btnInventory').addEventListener('touchstart', (e)=>{
   inventoryPanelOpen ? closeInventoryPanel() : openInventoryPanel();
 }, {passive:false});
 
-/* ===== POSICIONAMENTO DE ESTRUTURAS ===== */
+/* ===== POSICIONAMENTO DE ESTRUTURAS (70% maior) ===== */
+const BUILD_SCALE = 1.7; // 70% maior
+
 let placingType = null;
 const placementHintEl = document.getElementById('placementHint');
 const btnPlaceConfirm = document.getElementById('btnPlaceConfirm');
@@ -1068,57 +1080,59 @@ function chunkOfPos(x,y,z){
 function createStructureVisual(type, pos, ry){
   const group = new THREE.Group();
   const solids = [];
+  const scale = BUILD_SCALE;
+  
   if(type==='parede'){
     const mat = new THREE.MeshStandardMaterial({ color:0x555a60, roughness:0.7, metalness:0.3 });
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(2.4,2.4,0.3), mat);
-    slab.position.set(0,1.2,0); slab.castShadow=true;
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(2.4*scale, 2.4*scale, 0.3*scale), mat);
+    slab.position.set(0, 1.2*scale, 0); slab.castShadow=true;
     group.add(slab); solids.push(slab);
   } else if(type==='chao'){
     const mat = new THREE.MeshStandardMaterial({ color:0x6a5a44, roughness:0.8, metalness:0.1 });
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(3,0.3,3), mat);
-    slab.position.set(0,0.15,0); slab.castShadow=true;
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(3*scale, 0.3*scale, 3*scale), mat);
+    slab.position.set(0, 0.15*scale, 0); slab.castShadow=true;
     group.add(slab); solids.push(slab);
   } else if(type==='porta'){
     const mat = new THREE.MeshStandardMaterial({ color:0x7a5a33, roughness:0.7 });
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.1,2.2,0.15), mat);
-    slab.position.set(0,1.1,0); slab.castShadow=true;
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(1.1*scale, 2.2*scale, 0.15*scale), mat);
+    slab.position.set(0, 1.1*scale, 0); slab.castShadow=true;
     group.add(slab); solids.push(slab);
-    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), new THREE.MeshStandardMaterial({color:0xccaa44,metalness:0.7}));
-    handle.position.set(0.4,1.1,0.1);
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.05*scale,6,6), new THREE.MeshStandardMaterial({color:0xccaa44,metalness:0.7}));
+    handle.position.set(0.4*scale, 1.1*scale, 0.1*scale);
     group.add(handle);
   } else if(type==='espinho'){
     const mat = new THREE.MeshStandardMaterial({ color:0x772222, roughness:0.6, metalness:0.4 });
-    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,1.6), mat);
-    base.position.set(0,0.25,0); base.castShadow=true;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6*scale, 0.5*scale, 1.6*scale), mat);
+    base.position.set(0, 0.25*scale, 0); base.castShadow=true;
     group.add(base); solids.push(base);
     const spikeMat = new THREE.MeshStandardMaterial({ color:0x999999, metalness:0.6, roughness:0.3 });
     for(let i=0;i<5;i++){
       const ang = (i/5)*Math.PI*2;
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1,0.5,6), spikeMat);
-      spike.position.set(Math.cos(ang)*0.5, 0.75, Math.sin(ang)*0.5);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1*scale, 0.5*scale, 6), spikeMat);
+      spike.position.set(Math.cos(ang)*0.5*scale, 0.75*scale, Math.sin(ang)*0.5*scale);
       group.add(spike);
     }
   } else if(type==='lampiao'){
     const poleMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a, metalness:0.5, roughness:0.5 });
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,2.0,8), poleMat);
-    pole.position.set(0,1.0,0); pole.castShadow=true;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06*scale, 0.08*scale, 2.0*scale, 8), poleMat);
+    pole.position.set(0, 1.0*scale, 0); pole.castShadow=true;
     group.add(pole); solids.push(pole);
     const headMat = new THREE.MeshStandardMaterial({ color:0xffeecc, emissive:0xffcc44, emissiveIntensity:1.2 });
-    const headM = new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8), headMat);
-    headM.position.set(0,2.05,0);
+    const headM = new THREE.Mesh(new THREE.SphereGeometry(0.18*scale,8,8), headMat);
+    headM.position.set(0, 2.05*scale, 0);
     group.add(headM);
-    const light = new THREE.PointLight(0xffcc77, 3.2, 10, 2);
-    light.position.set(0,2.05,0);
+    const light = new THREE.PointLight(0xffcc77, 3.2 * scale, 10 * scale, 2);
+    light.position.set(0, 2.05*scale, 0);
     group.add(light);
     group.userData.light = light;
   } else if(type==='bandeira'){
     const poleMat = new THREE.MeshStandardMaterial({ color:0x555555, metalness:0.4, roughness:0.6 });
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,2.2,6), poleMat);
-    pole.position.set(0,1.1,0); pole.castShadow=true;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04*scale, 0.04*scale, 2.2*scale, 6), poleMat);
+    pole.position.set(0, 1.1*scale, 0); pole.castShadow=true;
     group.add(pole); solids.push(pole);
     const clothMat = new THREE.MeshStandardMaterial({ color:0xdd3322, roughness:0.9, side:THREE.DoubleSide });
-    const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.4), clothMat);
-    cloth.position.set(0.32,1.9,0);
+    const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.6*scale, 0.4*scale), clothMat);
+    cloth.position.set(0.32*scale, 1.9*scale, 0);
     group.add(cloth);
   }
   group.position.copy(pos);
@@ -1160,7 +1174,6 @@ function removePlacedStructure(id, refund){
   }
   placedBlocks.delete(id);
   if(s.type==='bandeira'){ flags = flags.filter(f=>f.id!==id); }
-  // se nao ha mais estruturas nesse chunk, libera pra regerar procedural no futuro
   let stillClaimed = false;
   for(const other of placedBlocks.values()){ if(other.chunkKey===s.chunkKey){ stillClaimed=true; break; } }
   if(!stillClaimed) claimedChunks.delete(s.chunkKey);
@@ -1188,7 +1201,7 @@ function attemptPlacement(){
   updatePlacementHint();
 }
 
-/* ===== DESTRUIÇÃO ===== */
+/* ===== DESTRUIÇÃO (tempos ajustados 5-40s) ===== */
 let destructTarget = null;
 let destructProgress = 0;
 let isDestroyHeld = false;
@@ -1225,15 +1238,24 @@ function sameTarget(a,b){
 function getDestructDuration(target){
   if(target.kind==='placed'){
     const s = placedBlocks.get(target.structId);
-    return s ? RECIPES[s.type].duration : 10;
+    if (s) {
+      // Estruturas tem tempo baseado no tipo
+      const baseTime = RECIPES[s.type]?.duration || 10;
+      return THREE.MathUtils.clamp(baseTime * 0.7, 5, 40);
+    }
+    return 10;
   }
+  // Chunks: baseado no volume
   const v = target.boxData.w * target.boxData.h * target.boxData.d;
-  return THREE.MathUtils.clamp(5 + Math.sqrt(v)*0.4, 5, 40);
+  const duration = THREE.MathUtils.clamp(5 + Math.sqrt(v)*0.3, 5, 40);
+  return Math.round(duration / 5) * 5; // Arredonda para múltiplo de 5
 }
 
 function finalizeDestruction(target){
   if(target.kind==='placed'){
     removePlacedStructure(target.structId, true);
+    const duration = getDestructDuration(target);
+    rewardBlocks(duration);
     showToast('Estrutura desmontada, materiais recuperados');
   } else {
     const mesh = target.mesh;
@@ -1241,7 +1263,7 @@ function finalizeDestruction(target){
     const boxData = target.boxData;
     mesh.userData.destroyed.add(boxIndex);
     const posAttr = mesh.geometry.attributes.position;
-    const base = boxIndex * 36; // VERTS_PER_BOX
+    const base = boxIndex * 36;
     for(let i=0;i<36;i++){
       posAttr.array[(base+i)*3] = boxData.x;
       posAttr.array[(base+i)*3+1] = boxData.y;
@@ -1424,7 +1446,6 @@ function stepMonster(m, dt, playerPos, fullAI){
   if(desired.lengthSq() > 0.0001) desired.normalize(); else desired.set(0,0,1);
 
   if(!fullAI){
-    // IA simplificada para anomalias distantes (economiza raycasts)
     const moveDist = MONSTER_SPEED*0.8*dt;
     m.pos.x += desired.x*moveDist;
     m.pos.z += desired.z*moveDist;
@@ -1705,7 +1726,6 @@ function generateChunkBoxes(cx, cz, layerIndex, salt, isSpawn, claimed){
   genGround(boxes, ox, oz, layerY, groundColor(rng), holeHere);
 
   if(claimed){
-    // area reservada pelo jogador: sem geracao procedural de estruturas
     if(holeHere) genShaft(boxes, holeHere, layerY, rng);
     return boxes;
   }
@@ -1887,10 +1907,11 @@ function updateDayNight(dt){
 }
 let isDay = true;
 
-/* ---------------- LANTERNA ---------------- */
+/* ---------------- LANTERNA (amarela suave) ---------------- */
 function toggleFlashlight(){
   flashlightOn = !flashlightOn;
-  flashlight.intensity = flashlightOn ? 80 : 0;
+  flashlight.intensity = flashlightOn ? 25 : 0; // Reduzido de 80 para 25
+  flashlight.color.setHex(0xffdd77); // Amarelo suave
   const btn = document.getElementById('btnFlashlight');
   if(btn) btn.classList.toggle('active', flashlightOn);
 }
@@ -1903,8 +1924,8 @@ function updateFlashlight(){
   target.applyQuaternion(camera.quaternion);
   target.add(pos);
   flashlight.target.position.copy(target);
-  flashlight.distance = 150;
-  flashlight.angle = 0.48;
+  flashlight.distance = 100; // Reduzido de 150 para 100
+  flashlight.angle = 0.4; // Mais focado
 }
 
 /* ---------------- PLAYER ---------------- */
