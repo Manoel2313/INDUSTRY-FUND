@@ -182,12 +182,6 @@
     pointer-events:auto;
   }
 
-  #blackScreen{
-    position:absolute;inset:0;z-index:100;
-    display:none;
-    background:#000;
-  }
-
   #toastMsg{
     position:absolute;top:110px;left:50%;transform:translateX(-50%);
     color:var(--gray-100);font-family:var(--font-ui);font-size:12px;letter-spacing:1px;
@@ -289,7 +283,7 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - PRIME v3 (Ogro Destruidor + IA Melhorada + Clima Vermelho)
+   INDUSTRY FUND - PRIME v4 (Pistola FPS + Colisão de Monstros)
    ====================================================================== */
 
 /* ===== MENU ===== */
@@ -329,6 +323,7 @@ const STEP_RUN      = 1.5;
 
 const EYE_HEIGHT   = 1.7;
 const PLAYER_RADIUS = 0.4;
+const MONSTER_RADIUS = 0.5;
 const GRAVITY      = -24;
 const JUMP_SPEED_NORMAL = Math.sqrt(2 * Math.abs(GRAVITY) * 2);
 const JUMP_SPEED_RUN    = Math.sqrt(2 * Math.abs(GRAVITY) * 6);
@@ -393,11 +388,6 @@ const fillLight = new THREE.DirectionalLight(0x883333, 0.3);
 fillLight.position.set(-160,120,-140);
 scene.add(fillLight);
 
-// Luz vermelha ambiente adicional
-const redLight = new THREE.PointLight(0xff2222, 0.2, 200);
-redLight.position.set(0, 100, 0);
-scene.add(redLight);
-
 function onResize(){
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -427,9 +417,17 @@ function createPlayer(){
   playerGroup.visible = true;
 }
 
-/* ===== PISTOLA VISÍVEL (FPS) ===== */
+/* ===== PISTOLA VISÍVEL (FPS - posição fixa na tela) ===== */
+// Usamos uma câmera separada para a pistola (overlay)
+const gunCamera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 10);
+gunCamera.position.set(0, 0, 1);
+gunCamera.lookAt(0, 0, 0);
+
+const gunScene = new THREE.Scene();
+gunScene.background = null;
+
 const gunGroup = new THREE.Group();
-scene.add(gunGroup);
+gunScene.add(gunGroup);
 
 function createGun(){
   while(gunGroup.children.length > 0){
@@ -444,7 +442,7 @@ function createGun(){
   const barrelMat = new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.9, roughness: 0.2 });
   const accentMat = new THREE.MeshStandardMaterial({ color: 0xcc8844, metalness: 0.5, roughness: 0.3 });
   
-  // Corpo da pistola (mais detalhado)
+  // Corpo da pistola
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.32), metalMat);
   body.position.set(0, 0, -0.15);
   gunGroup.add(body);
@@ -466,7 +464,7 @@ function createGun(){
   grip.rotation.x = 0.15;
   gunGroup.add(grip);
   
-  // Textura da empunhadura (linhas)
+  // Textura da empunhadura
   for(let i = 0; i < 3; i++){
     const line = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.01, 0.01), new THREE.MeshStandardMaterial({ color: 0x4a3520 }));
     line.position.set(0, -0.04 - i*0.05, -0.06);
@@ -498,10 +496,10 @@ function createGun(){
   accent.position.set(0, 0.13, -0.20);
   gunGroup.add(accent);
   
-  // Posição da pistola (canto inferior direito estilo FPS)
-  gunGroup.position.set(0.35, -0.18, -0.6);
-  gunGroup.rotation.x = -0.05;
-  gunGroup.rotation.z = 0.1;
+  // Posição da pistola no canto inferior direito (coordenadas de câmera overlay)
+  gunGroup.position.set(0.25, -0.15, -0.5);
+  gunGroup.rotation.x = 0.0;
+  gunGroup.rotation.z = 0.15;
 }
 
 // Animação de recuo
@@ -509,10 +507,10 @@ let gunRecoil = 0;
 let gunRecoilTime = 0;
 
 function updateGun(dt){
-  // Posição base
-  const baseX = 0.35;
-  const baseY = -0.18;
-  const baseZ = -0.6;
+  // Posição base na tela
+  const baseX = 0.25;
+  const baseY = -0.15;
+  const baseZ = -0.5;
   
   // Movimento de respiração
   const breath = Math.sin(performance.now() / 2000) * 0.002;
@@ -529,7 +527,7 @@ function updateGun(dt){
       gunGroup.position.x = baseX + ease * 0.5;
       gunGroup.position.y = baseY - ease * 0.8;
       gunGroup.position.z = baseZ + ease * 0.3;
-      gunGroup.rotation.x = -0.05 - ease * 0.3;
+      gunGroup.rotation.x = -ease * 0.3;
       return;
     }
   }
@@ -537,8 +535,8 @@ function updateGun(dt){
   gunGroup.position.x = baseX + breath;
   gunGroup.position.y = baseY + Math.sin(performance.now() / 3000) * 0.002;
   gunGroup.position.z = baseZ;
-  gunGroup.rotation.x = -0.05;
-  gunGroup.rotation.z = 0.1 + Math.sin(performance.now() / 4000) * 0.002;
+  gunGroup.rotation.x = 0;
+  gunGroup.rotation.z = 0.15 + Math.sin(performance.now() / 4000) * 0.002;
 }
 
 function triggerRecoil(){
@@ -578,7 +576,8 @@ const MONSTER_DATA = {
     size: 1.0,
     attackRange: 2.5,
     attackCooldown: 1.5,
-    baseScale: 0.6
+    baseScale: 0.6,
+    radius: 0.5
   },
   baiacu: {
     hp: 75,
@@ -592,7 +591,8 @@ const MONSTER_DATA = {
     explodeDamage: 50,
     explodeRadius: 8,
     flyHeight: 2.5,
-    baseScale: 0.7
+    baseScale: 0.7,
+    radius: 0.5
   },
   espinhosa: {
     hp: 100,
@@ -604,7 +604,8 @@ const MONSTER_DATA = {
     attackRange: 20,
     attackCooldown: 1.8,
     projectileSpeed: 12,
-    baseScale: 0.6
+    baseScale: 0.6,
+    radius: 0.5
   },
   ogro: {
     hp: 250,
@@ -612,12 +613,13 @@ const MONSTER_DATA = {
     speed: 1.8,
     points: 5,
     color: 0x44aa44,
-    size: 2.5, // 50% menor (era 5.0)
+    size: 2.5,
     attackRange: 3.5,
     attackCooldown: 2.0,
     baseScale: 0.4,
     destroyRange: 2.0,
-    destroyDamage: 50
+    destroyDamage: 50,
+    radius: 0.8
   }
 };
 
@@ -780,7 +782,6 @@ function createOgro(){
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0xff6633, emissive: 0xff4400, emissiveIntensity: 0.4 });
   const toothMat = new THREE.MeshStandardMaterial({ color: 0xeeeecc, roughness: 0.8 });
   
-  // Corpo (gorila) - escala reduzida 50%
   const torso = new THREE.Mesh(new THREE.SphereGeometry(0.8, 10, 10), bodyMat);
   torso.scale.set(1, 1.2, 0.8);
   torso.position.y = 1.4;
@@ -826,6 +827,46 @@ function createOgro(){
   
   group.scale.set(0.5, 0.5, 0.5);
   return group;
+}
+
+// Função para mover monstro com colisão
+function moveMonsterWithCollision(monster, dx, dz, dt){
+  const radius = MONSTER_DATA[monster.type].radius || 0.5;
+  const rayY = monster.pos.y + 0.5;
+  
+  // Movimento em X
+  if(Math.abs(dx) > 1e-6){
+    const dirX = Math.sign(dx);
+    raycaster.set(
+      new THREE.Vector3(monster.pos.x, rayY, monster.pos.z),
+      new THREE.Vector3(dirX, 0, 0)
+    );
+    raycaster.far = radius + Math.abs(dx) + 0.05;
+    const hits = raycaster.intersectObjects(collidablesList, false);
+    if(hits.length > 0){
+      const allowed = Math.max(0, hits[0].distance - radius - 0.02);
+      monster.pos.x += dirX * Math.min(Math.abs(dx), allowed);
+    } else {
+      monster.pos.x += dx;
+    }
+  }
+  
+  // Movimento em Z
+  if(Math.abs(dz) > 1e-6){
+    const dirZ = Math.sign(dz);
+    raycaster.set(
+      new THREE.Vector3(monster.pos.x, rayY, monster.pos.z),
+      new THREE.Vector3(0, 0, dirZ)
+    );
+    raycaster.far = radius + Math.abs(dz) + 0.05;
+    const hits = raycaster.intersectObjects(collidablesList, false);
+    if(hits.length > 0){
+      const allowed = Math.max(0, hits[0].distance - radius - 0.02);
+      monster.pos.z += dirZ * Math.min(Math.abs(dz), allowed);
+    } else {
+      monster.pos.z += dz;
+    }
+  }
 }
 
 function spawnMonster(nearPos){
@@ -879,11 +920,11 @@ function spawnMonster(nearPos){
     destroyDamage: data.destroyDamage || 0,
     stuckTimer: 0,
     stuckCheckPos: new THREE.Vector3(x, layerY, z),
-    // IA melhorada
     stateTimer: 0,
     currentState: 'chase',
     lastKnownPos: nearPos.clone(),
-    wanderTarget: new THREE.Vector3(x + (Math.random()-0.5)*20, layerY, z + (Math.random()-0.5)*20)
+    wanderTarget: new THREE.Vector3(x + (Math.random()-0.5)*20, layerY, z + (Math.random()-0.5)*20),
+    radius: data.radius || 0.5
   };
   
   monsters.push(monster);
@@ -897,7 +938,8 @@ function createProjectile(origin, target, speed, damage){
     transparent: true,
     opacity: 0.8
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), mat);
+  // Bala menor
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), mat);
   mesh.position.copy(origin);
   scene.add(mesh);
   
@@ -953,16 +995,12 @@ function updateProjectiles(dt){
 }
 
 function destroyStructureAt(pos, radius){
-  // Remove estruturas do chunk próximas ao ogro
   for(const [key, c] of chunkMap){
     const centerX = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
     const centerZ = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
     const dist = Math.hypot(centerX - pos.x, centerZ - pos.z);
     if(dist < radius + CHUNK_SIZE/2){
-      // Recria o chunk sem as estruturas (apenas chão e shafts)
-      // Por simplicidade, vamos marcar o chunk para recriar
       const boxes = generateChunkBoxes(c.cx, c.cz, c.layer, 0, false);
-      // Recria o mesh
       const newMesh = buildChunkMesh(boxes);
       chunkGroup.remove(c.mesh);
       c.mesh.geometry.dispose();
@@ -1028,14 +1066,11 @@ function updateMonsters(dt, playerPos){
       continue;
     }
     
-    // ===== IA MELHORADA =====
     if(m.type === 'baiacu'){
       m.pos.y = Math.round(playerPos.y / LAYER_HEIGHT) * LAYER_HEIGHT + m.flyHeight + Math.sin(m.animTime * 0.5) * 0.5;
     }
     
-    // OGRO - DESTRÓI ESTRUTURAS
     if(m.type === 'ogro' && m.destroyRange > 0){
-      // Verifica se está perto de estruturas
       let hitStructure = false;
       for(const [key, c] of chunkMap){
         const centerX = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
@@ -1056,17 +1091,16 @@ function updateMonsters(dt, playerPos){
     if(distToPlayer < 200){
       const desired = new THREE.Vector3(dx, 0, dz).normalize();
       
-      // Estados da IA
       if(m.type === 'espinhosa' && distToPlayer < 50 && distToPlayer > 5){
         m.attackTimer -= dt;
         if(m.attackTimer <= 0){
           spawnProjectile(m, playerPos);
           m.attackTimer = 1.8;
         }
-        // Espinhosa fica mais parada quando atira
         if(distToPlayer > 15){
-          m.pos.x += desired.x * m.speed * dt * 0.3;
-          m.pos.z += desired.z * m.speed * dt * 0.3;
+          const moveX = desired.x * m.speed * dt * 0.3;
+          const moveZ = desired.z * m.speed * dt * 0.3;
+          moveMonsterWithCollision(m, moveX, moveZ, dt);
         }
       } else if(distToPlayer < m.attackRange){
         m.attackTimer -= dt;
@@ -1075,14 +1109,14 @@ function updateMonsters(dt, playerPos){
           m.attackTimer = 2.0;
           showToast('💢 ' + m.type + ' te atacou!');
         }
-        // Recua um pouco
-        m.pos.x -= desired.x * m.speed * dt * 0.3;
-        m.pos.z -= desired.z * m.speed * dt * 0.3;
+        const moveX = -desired.x * m.speed * dt * 0.3;
+        const moveZ = -desired.z * m.speed * dt * 0.3;
+        moveMonsterWithCollision(m, moveX, moveZ, dt);
       } else {
-        // Persegue o jogador
         const moveSpeed = m.speed * (m.type === 'ogro' ? 0.5 : 1);
-        m.pos.x += desired.x * moveSpeed * dt;
-        m.pos.z += desired.z * moveSpeed * dt;
+        const moveX = desired.x * moveSpeed * dt;
+        const moveZ = desired.z * moveSpeed * dt;
+        moveMonsterWithCollision(m, moveX, moveZ, dt);
       }
       
       m.dir.copy(desired);
@@ -1181,7 +1215,7 @@ function shoot(){
 
 function createMuzzleFlash(){
   const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.1, 6, 6),
+    new THREE.SphereGeometry(0.05, 6, 6),
     new THREE.MeshBasicMaterial({ color: 0xffff44, transparent: true, opacity: 0.8 })
   );
   const dir = new THREE.Vector3();
@@ -1847,7 +1881,14 @@ function animate(){
   
   document.getElementById('hudPos').textContent = player.position.x.toFixed(1)+', '+(player.position.y-EYE_HEIGHT).toFixed(1)+', '+player.position.z.toFixed(1);
 
+  // Renderiza cena principal e depois a pistola por cima (overlay)
+  renderer.autoClear = true;
   renderer.render(scene, camera);
+  
+  // Pistola overlay (renderiza separado com câmera fixa)
+  renderer.autoClear = false;
+  renderer.render(gunScene, gunCamera);
+  renderer.autoClear = true;
 }
 
 animate();
