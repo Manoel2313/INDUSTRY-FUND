@@ -65,15 +65,6 @@
   .platBtn:active{transform:scale(0.97);}
   .platBtn.active{background:var(--accent);border-color:var(--accent);color:#111;}
 
-  #loadingScreen{
-    position:absolute;inset:0;z-index:40;
-    display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;
-    background:var(--gray-950);
-  }
-  #loadingLabel{color:var(--gray-300);letter-spacing:5px;font-size:12px;text-transform:uppercase;}
-  #loadingBarOuter{width:min(420px,70vw);height:6px;background:var(--gray-800);border:1px solid var(--gray-700);}
-  #loadingBarInner{width:0%;height:100%;background:var(--accent);transition:width .12s linear;}
-
   #hud{
     position:absolute;top:0;left:0;right:0;z-index:20;
     pointer-events:none;
@@ -217,12 +208,7 @@
   </div>
 </div>
 
-<div id="loadingScreen">
-  <div id="loadingLabel">CARREGANDO 0%</div>
-  <div id="loadingBarOuter"><div id="loadingBarInner"></div></div>
-</div>
-
-<div id="hud">
+<div id="hud" style="display:none;">
   <div id="healthBarWrap"><div id="healthBarInner"></div></div>
   <div id="hudInfo">
     <span>💀 <span class="kill" id="hudKills">0</span></span>
@@ -231,10 +217,7 @@
   </div>
 </div>
 
-<div id="crosshair">
-  <div class="ring"></div>
-  <div class="dot"></div>
-</div>
+<div id="crosshair" style="display:none;"></div>
 
 <div id="pcHint">WASD · ESPAÇO PULA · Q CORRE · T ESCALA · CLIQUE ATIRA</div>
 
@@ -256,7 +239,7 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - PRIME v5 (Pistola Nova + Escalada + IA com Pathfinding)
+   INDUSTRY FUND - PRIME v6 (Sem Loading Screen)
    ====================================================================== */
 
 /* ===== MENU ===== */
@@ -278,8 +261,8 @@ let CHUNK_SIZE = 100;
 let ACTIVE_RADIUS = 500;
 let UNLOAD_MARGIN = 60;
 let UNLOAD_RADIUS = ACTIVE_RADIUS + UNLOAD_MARGIN;
-let INITIAL_RADIUS = 160;
-let FADE_TIME = 1.1;
+let INITIAL_RADIUS = 120;
+let FADE_TIME = 0.8;
 
 const WALK_SPEED   = 3;
 const RUN_MULT     = 5;
@@ -296,7 +279,6 @@ const STEP_RUN      = 1.5;
 
 const EYE_HEIGHT   = 1.7;
 const PLAYER_RADIUS = 0.4;
-const MONSTER_RADIUS = 0.5;
 const GRAVITY      = -24;
 const JUMP_SPEED_NORMAL = Math.sqrt(2 * Math.abs(GRAVITY) * 2);
 const JUMP_SPEED_RUN    = Math.sqrt(2 * Math.abs(GRAVITY) * 6);
@@ -309,7 +291,7 @@ let kills = 0;
 let isDead = false;
 
 // ===== ARMA =====
-const SHOOT_COOLDOWN = 0.5; // 2 tiros por segundo
+const SHOOT_COOLDOWN = 0.5;
 let shootTimer = 0;
 const BULLET_DAMAGE = 5;
 const BULLET_RANGE = 100;
@@ -398,7 +380,7 @@ function createPlayer(){
   playerGroup.visible = true;
 }
 
-/* ===== PISTOLA - NOVA (Overlay) ===== */
+/* ===== PISTOLA ===== */
 const gunCamera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 10);
 gunCamera.position.set(0, 0, 1);
 gunCamera.lookAt(0, 0, 0);
@@ -416,45 +398,37 @@ function createGun(){
     child.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); });
   }
   
-  // Pistola simples - estilo FPS
   const metalMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.7, roughness: 0.3 });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x444455, metalness: 0.5, roughness: 0.4 });
   const gripMat = new THREE.MeshStandardMaterial({ color: 0x2d1f0e, roughness: 0.9 });
   
-  // Corpo principal
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.30), metalMat);
   body.position.set(0, 0, -0.12);
   gunGroup.add(body);
   
-  // Cano
   const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.20, 8), darkMat);
   barrel.rotation.x = Math.PI/2;
   barrel.position.set(0, 0.02, -0.32);
   gunGroup.add(barrel);
   
-  // Empunhadura
   const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.18, 0.06), gripMat);
   grip.position.set(0, -0.06, -0.02);
   grip.rotation.x = 0.15;
   gunGroup.add(grip);
   
-  // Gatilho
   const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.035, 0.015), darkMat);
   trigger.position.set(0, -0.02, -0.08);
   gunGroup.add(trigger);
   
-  // Mira
   const sight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.005), darkMat);
   sight.position.set(0, 0.085, -0.35);
   gunGroup.add(sight);
   
-  // Posição base no canto inferior direito
   gunGroup.position.set(0.28, -0.12, -0.45);
   gunGroup.rotation.z = 0.12;
   gunGroup.rotation.x = -0.02;
 }
 
-// Recuo da arma
 let gunRecoil = 0;
 let gunRecoilTime = 0;
 
@@ -463,10 +437,8 @@ function updateGun(dt, isShooting){
   const baseY = -0.12;
   const baseZ = -0.45;
   
-  // Respiração
   const breath = Math.sin(performance.now() / 2000) * 0.002;
   
-  // Recuo
   if(gunRecoil > 0 || isShooting){
     if(isShooting && gunRecoil === 0){
       gunRecoil = 1;
@@ -501,7 +473,7 @@ function triggerRecoil(){
   gunRecoilTime = 0;
 }
 
-/* ===== BALAS (projéteis visíveis) ===== */
+/* ===== BALAS ===== */
 let bullets = [];
 
 function createBullet(origin, direction){
@@ -516,7 +488,6 @@ function createBullet(origin, direction){
   mesh.position.copy(origin);
   scene.add(mesh);
   
-  // Luz do tiro
   const light = new THREE.PointLight(0xffaa44, 0.5, 3);
   light.position.copy(origin);
   scene.add(light);
@@ -539,7 +510,6 @@ function updateBullets(dt){
     b.mesh.position.copy(b.pos);
     b.life -= dt;
     
-    // Verifica colisão com monstros
     let hit = false;
     for(const m of monsters){
       const dist = b.pos.distanceTo(m.pos);
@@ -551,14 +521,11 @@ function updateBullets(dt){
       }
     }
     
-    // Verifica colisão com estruturas
     if(!hit){
       raycaster.set(b.pos, b.dir);
       raycaster.far = 0.5;
       const hits = raycaster.intersectObjects(collidablesList, false);
-      if(hits.length > 0){
-        hit = true;
-      }
+      if(hits.length > 0) hit = true;
     }
     
     if(hit || b.life <= 0){
@@ -594,49 +561,21 @@ const MONSTER_TYPES = {
 
 const MONSTER_DATA = {
   chupa_cabra: {
-    hp: 100,
-    damage: 30,
-    speed: 3.5,
-    points: 1,
-    size: 1.0,
-    attackRange: 2.5,
-    attackCooldown: 1.5,
-    radius: 0.5
+    hp: 100, damage: 30, speed: 3.5, points: 1, size: 1.0,
+    attackRange: 2.5, attackCooldown: 1.5, radius: 0.5
   },
   baiacu: {
-    hp: 75,
-    damage: 30,
-    speed: 3.0,
-    points: 3,
-    size: 0.8,
-    attackRange: 2.0,
-    attackCooldown: 1.2,
-    explodeDamage: 50,
-    explodeRadius: 8,
-    flyHeight: 2.5,
-    radius: 0.5
+    hp: 75, damage: 30, speed: 3.0, points: 3, size: 0.8,
+    attackRange: 2.0, attackCooldown: 1.2, explodeDamage: 50,
+    explodeRadius: 8, flyHeight: 2.5, radius: 0.5
   },
   espinhosa: {
-    hp: 100,
-    damage: 25,
-    speed: 5.0,
-    points: 1,
-    size: 1.2,
-    attackRange: 25,
-    attackCooldown: 1.8,
-    projectileSpeed: 12,
-    radius: 0.5
+    hp: 100, damage: 25, speed: 5.0, points: 1, size: 1.2,
+    attackRange: 25, attackCooldown: 1.8, projectileSpeed: 12, radius: 0.5
   },
   ogro: {
-    hp: 250,
-    damage: 70,
-    speed: 1.8,
-    points: 5,
-    size: 2.5,
-    attackRange: 3.5,
-    attackCooldown: 2.0,
-    destroyRange: 2.0,
-    radius: 0.8
+    hp: 250, damage: 70, speed: 1.8, points: 5, size: 2.5,
+    attackRange: 3.5, attackCooldown: 2.0, destroyRange: 2.0, radius: 0.8
   }
 };
 
@@ -644,7 +583,6 @@ let monsterSpawnTimer = 0;
 const MONSTER_SPAWN_INTERVAL = 2.0;
 const MAX_MONSTERS = 30;
 
-// Projéteis de espinhosa
 let monsterProjectiles = [];
 
 function createMonsterProjectile(origin, target, speed, damage){
@@ -948,7 +886,7 @@ function moveEntityWithCollision(entity, dx, dz, radius, dt){
   }
 }
 
-/* ===== IA COM PATHFINDING SIMPLES ===== */
+/* ===== IA COM PATHFINDING ===== */
 function findPath(monster, targetPos){
   const start = monster.pos.clone();
   const end = targetPos.clone();
@@ -958,7 +896,6 @@ function findPath(monster, targetPos){
   if(dist < 0.1) return null;
   dir.normalize();
   
-  // Testa se há linha de visão direta
   raycaster.set(start, dir);
   raycaster.far = dist;
   const hits = raycaster.intersectObjects(collidablesList, false);
@@ -967,8 +904,6 @@ function findPath(monster, targetPos){
     return dir;
   }
   
-  // Se não há linha de visão, tenta encontrar um caminho alternativo
-  // Testa ângulos laterais
   const angles = [0.6, -0.6, 1.2, -1.2, 1.8, -1.8];
   for(const angle of angles){
     const testDir = new THREE.Vector3(
@@ -984,7 +919,6 @@ function findPath(monster, targetPos){
     }
   }
   
-  // Se ainda não encontrou, tenta ir em direção ao alvo com desvio
   const wanderDir = new THREE.Vector3(
     dir.x + (Math.random() - 0.5) * 0.8,
     0,
@@ -1023,12 +957,10 @@ function spawnMonster(nearPos){
   monstersGroup.add(mesh);
   
   const monster = {
-    mesh,
-    type,
+    mesh, type,
     pos: new THREE.Vector3(x, layerY + 0.05, z),
     dir: new THREE.Vector3(0, 0, 1),
-    hp: data.hp,
-    maxHp: data.hp,
+    hp: data.hp, maxHp: data.hp,
     damage: data.damage,
     speed: data.speed * (0.8 + Math.random() * 0.4),
     points: data.points,
@@ -1041,11 +973,9 @@ function spawnMonster(nearPos){
     projectileSpeed: data.projectileSpeed || 0,
     destroyRange: data.destroyRange || 0,
     radius: data.radius || 0.5,
-    // IA
     stateTimer: 0,
     stuckTimer: 0,
     stuckCheckPos: new THREE.Vector3(x, layerY, z),
-    wanderTarget: new THREE.Vector3(x + (Math.random()-0.5)*20, layerY, z + (Math.random()-0.5)*20),
     pathDir: new THREE.Vector3(1, 0, 0),
     pathTimer: 0
   };
@@ -1100,12 +1030,10 @@ function updateMonsters(dt, playerPos){
       continue;
     }
     
-    // Baiacu voa
     if(m.type === 'baiacu'){
       m.pos.y = Math.round(playerPos.y / LAYER_HEIGHT) * LAYER_HEIGHT + m.flyHeight + Math.sin(m.animTime * 0.5) * 0.5;
     }
     
-    // Ogro destrói estruturas
     if(m.type === 'ogro' && m.destroyRange > 0){
       if(m.stateTimer > 0.5){
         let hitStructure = false;
@@ -1113,10 +1041,7 @@ function updateMonsters(dt, playerPos){
           const centerX = c.cx * CHUNK_SIZE + CHUNK_SIZE/2;
           const centerZ = c.cz * CHUNK_SIZE + CHUNK_SIZE/2;
           const dist = Math.hypot(centerX - m.pos.x, centerZ - m.pos.z);
-          if(dist < m.destroyRange + 5){
-            hitStructure = true;
-            break;
-          }
+          if(dist < m.destroyRange + 5){ hitStructure = true; break; }
         }
         if(hitStructure){
           destroyStructureAt(m.pos, m.destroyRange);
@@ -1126,7 +1051,6 @@ function updateMonsters(dt, playerPos){
       }
     }
     
-    // IA com pathfinding
     if(m.pos.distanceTo(playerPos) < 200){
       const dirToPlayer = new THREE.Vector3().copy(playerPos).sub(m.pos);
       dirToPlayer.y = 0;
@@ -1139,18 +1063,14 @@ function updateMonsters(dt, playerPos){
           m.attackTimer = 2.0;
           showToast('💢 ' + m.type + ' te atacou!');
         }
-        // Recua
         const moveX = -dirToPlayer.x / distToPlayer * m.speed * dt * 0.3;
         const moveZ = -dirToPlayer.z / distToPlayer * m.speed * dt * 0.3;
         moveEntityWithCollision(m, moveX, moveZ, m.radius, dt);
       } else {
-        // Encontra caminho
         m.pathTimer -= dt;
         if(m.pathTimer <= 0){
           const newDir = findPath(m, playerPos);
-          if(newDir){
-            m.pathDir.copy(newDir);
-          }
+          if(newDir) m.pathDir.copy(newDir);
           m.pathTimer = 0.3 + Math.random() * 0.3;
         }
         
@@ -1159,12 +1079,10 @@ function updateMonsters(dt, playerPos){
         const moveZ = m.pathDir.z * moveSpeed * dt;
         moveEntityWithCollision(m, moveX, moveZ, m.radius, dt);
         
-        // Verifica se está preso
         m.stuckTimer += dt;
         if(m.stuckTimer > 0.8){
           const moved = m.pos.distanceTo(m.stuckCheckPos);
           if(moved < 0.3){
-            // Está preso, tenta outra direção
             const angle = (Math.random() - 0.5) * 2;
             const newDir = new THREE.Vector3(
               m.pathDir.x * Math.cos(angle) - m.pathDir.z * Math.sin(angle),
@@ -1193,7 +1111,6 @@ function updateMonsters(dt, playerPos){
       m.mesh.rotation.z = Math.sin(m.animTime * 0.5) * 0.05;
     }
     
-    // Espinhosa atira projéteis
     if(m.type === 'espinhosa' && m.pos.distanceTo(playerPos) < 50 && m.pos.distanceTo(playerPos) > 5){
       m.attackTimer -= dt;
       if(m.attackTimer <= 0){
@@ -1261,15 +1178,12 @@ function findClimbTarget(){
   
   if(hits.length > 0 && hits[0].distance > 0.5){
     const point = hits[0].point;
-    // Verifica se há espaço acima para escalar
     const aboveOrigin = point.clone();
     aboveOrigin.y += 2.5;
     raycaster.set(aboveOrigin, dir);
     raycaster.far = 0.5;
     const aboveHits = raycaster.intersectObjects(collidablesList, false);
-    if(aboveHits.length === 0){
-      return point;
-    }
+    if(aboveHits.length === 0) return point;
   }
   return null;
 }
@@ -1300,19 +1214,14 @@ function stopClimb(){
 function updateClimb(dt){
   if(!isClimbing || isDead) return;
   
-  // Não pode atirar enquanto escala
-  // A escalada é lenta
   climbProgress += dt * CLIMB_SPEED;
   
   const targetPos = climbTarget.clone();
   targetPos.y += climbProgress * 2;
   
-  // Move o jogador para a posição da escalada
-  const oldPos = player.position.clone();
   const newPos = targetPos.clone();
   newPos.y += EYE_HEIGHT;
   
-  // Verifica colisão durante a escalada
   raycaster.set(newPos, new THREE.Vector3(0, -1, 0));
   raycaster.far = 2;
   const groundHits = raycaster.intersectObjects(collidablesList, false);
@@ -1322,7 +1231,6 @@ function updateClimb(dt){
   
   player.position.copy(newPos);
   
-  // Se chegou ao topo ou soltou a tecla
   if(climbProgress > 2.5){
     stopClimb();
     showToast('✅ Escalada concluída!');
@@ -1339,8 +1247,6 @@ function shoot(){
   
   const dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
-  
-  // Cria a bala a partir da câmera
   const origin = camera.position.clone();
   origin.add(dir.clone().multiplyScalar(0.3));
   
@@ -1591,8 +1497,7 @@ function unloadChunk(key){
   rebuildCollidables();
 }
 
-let loadingComplete = false;
-
+/* ===== STREAMING DIRETO (SEM LOADING) ===== */
 function nearestMissingChunks(px, py, pz, radius, forwardX, forwardZ){
   const currentLayer = getLayerFromY(py);
   const layerRange = Math.ceil(radius/LAYER_HEIGHT)+1;
@@ -1661,7 +1566,6 @@ function updateFirstPersonCamera(){
 function updatePhysics(dt, inForward, inStrafe){
   if(isDead) return;
   
-  // Se está escalando, não move normalmente
   if(isClimbing){
     updateClimb(dt);
     updateFirstPersonCamera();
@@ -1752,8 +1656,6 @@ function updatePhysics(dt, inForward, inStrafe){
 let mode = null;
 const keys = {};
 let pointerLocked = false;
-
-// Tecla T para escalar (segurar)
 let climbKeyHeld = false;
 
 window.addEventListener('keydown', (e)=>{
@@ -1762,19 +1664,13 @@ window.addEventListener('keydown', (e)=>{
   if(e.code==='KeyQ'){ running = true; }
   if(e.code==='KeyT'){
     e.preventDefault();
-    if(!climbKeyHeld){
-      climbKeyHeld = true;
-      startClimb();
-    }
+    if(!climbKeyHeld){ climbKeyHeld = true; startClimb(); }
   }
 });
 window.addEventListener('keyup', (e)=>{
   keys[e.code] = false;
   if(e.code==='KeyQ'){ running = false; }
-  if(e.code==='KeyT'){
-    climbKeyHeld = false;
-    stopClimb();
-  }
+  if(e.code==='KeyT'){ climbKeyHeld = false; stopClimb(); }
 });
 
 canvas.addEventListener('click', ()=>{
@@ -1811,7 +1707,7 @@ const btnRun = document.getElementById('btnRun');
 const btnShoot = document.getElementById('btnShoot');
 const btnClimb = document.getElementById('btnClimb');
 
-let joyActive = false, joyId = null, joyVec = {x:0,y:0};
+let joyVec = {x:0,y:0}, joyId = null;
 let lookId = null, lookLast = {x:0,y:0};
 let climbTouchActive = false;
 
@@ -1823,34 +1719,33 @@ function joyCenter(){
 joystickZone.addEventListener('touchstart', (e)=>{
   e.preventDefault();
   const t = e.changedTouches[0];
-  joyActive = true; joyId = t.identifier;
-  updateJoystick(t);
+  joyId = t.identifier;
+  const c = joyCenter();
+  let dx=t.clientX-c.x, dy=t.clientY-c.y;
+  const dist=Math.hypot(dx,dy), max=c.radius;
+  if(dist>max){ dx=dx/dist*max; dy=dy/dist*max; }
+  joyVec.x=dx/max; joyVec.y=dy/max;
+  joystickKnob.style.left=(30+dx)+'px'; joystickKnob.style.top=(30+dy)+'px';
 }, {passive:false});
 joystickZone.addEventListener('touchmove', (e)=>{
   e.preventDefault();
-  for(const t of e.changedTouches){ if(t.identifier===joyId) updateJoystick(t); }
+  for(const t of e.changedTouches){
+    if(t.identifier!==joyId) continue;
+    const c = joyCenter();
+    let dx=t.clientX-c.x, dy=t.clientY-c.y;
+    const dist=Math.hypot(dx,dy), max=c.radius;
+    if(dist>max){ dx=dx/dist*max; dy=dy/dist*max; }
+    joyVec.x=dx/max; joyVec.y=dy/max;
+    joystickKnob.style.left=(30+dx)+'px'; joystickKnob.style.top=(30+dy)+'px';
+  }
 }, {passive:false});
 function endJoy(e){
   for(const t of e.changedTouches){
-    if(t.identifier===joyId){
-      joyActive=false; joyId=null; joyVec={x:0,y:0};
-      joystickKnob.style.left='30px'; joystickKnob.style.top='30px';
-    }
+    if(t.identifier===joyId){ joyId=null; joyVec={x:0,y:0}; joystickKnob.style.left='30px'; joystickKnob.style.top='30px'; }
   }
 }
 joystickZone.addEventListener('touchend', endJoy);
 joystickZone.addEventListener('touchcancel', endJoy);
-
-function updateJoystick(t){
-  const c = joyCenter();
-  let dx = t.clientX-c.x, dy = t.clientY-c.y;
-  const dist = Math.hypot(dx,dy);
-  const max = c.radius;
-  if(dist>max){ dx = dx/dist*max; dy = dy/dist*max; }
-  joyVec.x = dx/max; joyVec.y = dy/max;
-  joystickKnob.style.left = (30+dx)+'px';
-  joystickKnob.style.top = (30+dy)+'px';
-}
 
 camLookZone.addEventListener('touchstart', (e)=>{
   for(const t of e.changedTouches){
@@ -1861,60 +1756,42 @@ camLookZone.addEventListener('touchstart', (e)=>{
 camLookZone.addEventListener('touchmove', (e)=>{
   for(const t of e.changedTouches){
     if(t.identifier!==lookId) continue;
-    const dx = t.clientX-lookLast.x, dy = t.clientY-lookLast.y;
-    lookLast = {x:t.clientX,y:t.clientY};
-    yaw -= dx*0.0042;
-    pitch -= dy*0.0042;
+    const dx=t.clientX-lookLast.x, dy=t.clientY-lookLast.y;
+    lookLast={x:t.clientX,y:t.clientY};
+    yaw -= dx*0.0042; pitch -= dy*0.0042;
     pitch = Math.max(-Math.PI/2+0.02, Math.min(Math.PI/2-0.02, pitch));
   }
 }, {passive:true});
-function endLook(e){
-  for(const t of e.changedTouches){ if(t.identifier===lookId) lookId=null; }
-}
+function endLook(e){ for(const t of e.changedTouches){ if(t.identifier===lookId) lookId=null; } }
 camLookZone.addEventListener('touchend', endLook);
 camLookZone.addEventListener('touchcancel', endLook);
 
-btnJump.addEventListener('touchstart', (e)=>{ e.preventDefault(); wantsJump = true; }, {passive:false});
-
-btnRun.addEventListener('touchstart', (e)=>{
-  e.preventDefault();
-  running = !running;
-  btnRun.classList.toggle('active', running);
-}, {passive:false});
-
-btnShoot.addEventListener('touchstart', (e)=>{
-  e.preventDefault();
-  shoot();
-}, {passive:false});
+btnJump.addEventListener('touchstart', (e)=>{ e.preventDefault(); wantsJump=true; }, {passive:false});
+btnRun.addEventListener('touchstart', (e)=>{ e.preventDefault(); running=!running; btnRun.classList.toggle('active', running); }, {passive:false});
+btnShoot.addEventListener('touchstart', (e)=>{ e.preventDefault(); shoot(); }, {passive:false});
 
 btnClimb.addEventListener('touchstart', (e)=>{
   e.preventDefault();
-  if(!climbTouchActive){
-    climbTouchActive = true;
-    startClimb();
-  }
+  if(!climbTouchActive){ climbTouchActive=true; startClimb(); }
 }, {passive:false});
 btnClimb.addEventListener('touchend', (e)=>{
   e.preventDefault();
-  climbTouchActive = false;
-  stopClimb();
+  climbTouchActive=false; stopClimb();
 }, {passive:false});
-btnClimb.addEventListener('touchcancel', ()=>{
-  climbTouchActive = false;
-  stopClimb();
-});
+btnClimb.addEventListener('touchcancel', ()=>{ climbTouchActive=false; stopClimb(); });
 
-function mobileInputVector(){
-  return { f: -joyVec.y, s: joyVec.x };
-}
+function mobileInputVector(){ return { f: -joyVec.y, s: joyVec.x }; }
 
 /* ===== START ===== */
 function beginGame(selectedModeArg){
   mode = selectedModeArg;
   document.getElementById('startScreen').style.display = 'none';
-  document.getElementById('loadingScreen').style.display = 'flex';
-  document.getElementById('loadingLabel').textContent='CARREGANDO 0%';
-  document.getElementById('loadingBarInner').style.width='0%';
+  
+  // Mostra HUD e crosshair imediatamente
+  document.getElementById('hud').style.display = 'block';
+  document.getElementById('crosshair').style.display = 'block';
+  if(mode==='pc'){ document.getElementById('pcHint').style.display = 'block'; }
+  if(mode==='mobile'){ document.getElementById('mobileControls').style.display = 'block'; }
   
   player.position.set(0, EYE_HEIGHT, 0);
   velocityY = 0; fallStartY = null; grounded = true;
@@ -1972,56 +1849,20 @@ function beginGame(selectedModeArg){
   climbTarget = null;
   climbProgress = 0;
   
+  // Carrega chunks iniciais
+  const initialCandidates = nearestMissingChunks(0, 0, 0, INITIAL_RADIUS, 0, -1);
+  const toLoad = Math.min(20, initialCandidates.length);
+  for(let i=0; i<toLoad; i++){
+    requestChunk(initialCandidates[i].cx, initialCandidates[i].cz, initialCandidates[i].layer);
+  }
+  for(const c of chunkMap.values()){
+    c.alpha = 1;
+    c.mesh.material.opacity = 1;
+    c.mesh.scale.y = 1;
+    c.state = 'active';
+  }
+  
   animate();
-}
-
-/* ===== LOADING ===== */
-const loadingScreen = document.getElementById('loadingScreen');
-const loadingLabel = document.getElementById('loadingLabel');
-const loadingBarInner = document.getElementById('loadingBarInner');
-const hud = document.getElementById('hud');
-const crosshair = document.getElementById('crosshair');
-const pcHint = document.getElementById('pcHint');
-const mobileControls = document.getElementById('mobileControls');
-
-function neededInitialChunkCount(){
-  const rC = Math.ceil(INITIAL_RADIUS/CHUNK_SIZE);
-  const layerRange = Math.ceil(INITIAL_RADIUS/LAYER_HEIGHT)+1;
-  let n=0;
-  for(let layer=-layerRange; layer<=layerRange; layer++){
-    const layerY=layer*LAYER_HEIGHT;
-    for(let cx=-rC; cx<=rC; cx++){
-      for(let cz=-rC; cz<=rC; cz++){
-        const d = Math.hypot(cx*CHUNK_SIZE+CHUNK_SIZE/2, cz*CHUNK_SIZE+CHUNK_SIZE/2, layerY);
-        if(d<=INITIAL_RADIUS) n++;
-      }
-    }
-  }
-  return n;
-}
-const NEEDED_INITIAL = neededInitialChunkCount();
-
-function initialLoadStep(){
-  const list = nearestMissingChunks(0,0,0, INITIAL_RADIUS, 0, -1);
-  const batch = Math.min(8, list.length);
-  for(let i=0;i<batch;i++) requestChunk(list[i].cx, list[i].cz, list[i].layer);
-  const loadedInRange = [...chunkMap.values()].filter(c=>{
-    const layerY = c.layer*LAYER_HEIGHT;
-    const d = Math.hypot(c.cx*CHUNK_SIZE+CHUNK_SIZE/2, c.cz*CHUNK_SIZE+CHUNK_SIZE/2, layerY);
-    return d<=INITIAL_RADIUS;
-  }).length;
-  const pct = Math.min(100, Math.round((loadedInRange/NEEDED_INITIAL)*100));
-  loadingBarInner.style.width = pct+'%';
-  loadingLabel.textContent = 'CARREGANDO '+pct+'%';
-  for(const c of chunkMap.values()){ c.alpha=1; c.mesh.material.opacity=1; c.mesh.scale.y=1; c.state='active'; }
-  if(loadedInRange >= NEEDED_INITIAL){
-    loadingComplete = true;
-    loadingScreen.style.display='none';
-    hud.style.display='block';
-    crosshair.style.display='block';
-    if(mode==='pc'){ pcHint.style.display='block'; }
-    if(mode==='mobile'){ mobileControls.style.display='block'; }
-  }
 }
 
 /* ===== MAIN LOOP ===== */
@@ -2033,7 +1874,6 @@ function animate(){
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.06);
 
-  if(!loadingComplete){ initialLoadStep(); renderer.render(scene, camera); return; }
   if(isDead){ renderer.render(scene, camera); return; }
 
   if(shootTimer > 0) shootTimer -= dt;
@@ -2041,11 +1881,10 @@ function animate(){
   const inVec = mode==='pc' ? pcInputVector() : mobileInputVector();
   updatePhysics(dt, inVec.f, inVec.s);
   
-  // Atualiza arma (visual)
   updateGun(dt, shootTimer > 0.1);
   
   _fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));
-  updateStreaming(player.position.x, player.position.y, player.position.z, _fwd.x, _fwd.z, 2);
+  updateStreaming(player.position.x, player.position.y, player.position.z, _fwd.x, _fwd.z, 3);
   animateChunks(dt);
   updateMonsters(dt, player.position);
   updateBullets(dt);
@@ -2054,7 +1893,6 @@ function animate(){
   renderer.autoClear = true;
   renderer.render(scene, camera);
   
-  // Overlay da pistola
   renderer.autoClear = false;
   renderer.render(gunScene, gunCamera);
   renderer.autoClear = true;
