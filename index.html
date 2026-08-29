@@ -239,7 +239,7 @@
 "use strict";
 
 /* ======================================================================
-   INDUSTRY FUND - PRIME v6 (Sem Loading Screen)
+   INDUSTRY FUND - PRIME v7 (Otimizado + Arma Ajustada + Escalada Melhorada)
    ====================================================================== */
 
 /* ===== MENU ===== */
@@ -256,13 +256,13 @@ document.getElementById('btnMobile').addEventListener('click', ()=>{
   beginGame(selectedMode);
 });
 
-/* ---------------- CONFIG ---------------- */
+/* ---------------- CONFIG OTIMIZADA ---------------- */
 let CHUNK_SIZE = 100;
-let ACTIVE_RADIUS = 500;
-let UNLOAD_MARGIN = 60;
+let ACTIVE_RADIUS = 350;
+let UNLOAD_MARGIN = 40;
 let UNLOAD_RADIUS = ACTIVE_RADIUS + UNLOAD_MARGIN;
-let INITIAL_RADIUS = 120;
-let FADE_TIME = 0.8;
+let INITIAL_RADIUS = 80;
+let FADE_TIME = 0.6;
 
 const WALK_SPEED   = 3;
 const RUN_MULT     = 5;
@@ -302,22 +302,21 @@ let isClimbing = false;
 let climbTarget = null;
 let climbProgress = 0;
 const CLIMB_SPEED = 0.8;
-const CLIMB_RANGE = 2.0;
+const CLIMB_RANGE = 2.5;
 
 /* ===== CÂMERA ===== */
 const canvas = document.getElementById('renderCanvas');
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: true,
+  antialias: false,
   powerPreference: "high-performance"
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.85;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.enabled = false;
 
 const fogColor = new THREE.Color(0x3a0a0a);
 const bgColor = new THREE.Color(0x1a0505);
@@ -329,25 +328,16 @@ camera.rotation.order = 'YXZ';
 
 const scene = new THREE.Scene();
 scene.background = bgColor.clone();
-scene.fog = new THREE.Fog(fogColor.clone(), 60, ACTIVE_RADIUS+80);
+scene.fog = new THREE.Fog(fogColor.clone(), 40, ACTIVE_RADIUS+40);
 
-const ambientLight = new THREE.AmbientLight(0x883333, 0.5);
+const ambientLight = new THREE.AmbientLight(0x883333, 0.4);
 scene.add(ambientLight);
-const hemisphereLight = new THREE.HemisphereLight(0x884444, 0x331111, 0.6);
+const hemisphereLight = new THREE.HemisphereLight(0x884444, 0x331111, 0.4);
 scene.add(hemisphereLight);
-const sunLight = new THREE.DirectionalLight(0xff8844, 0.8);
+const sunLight = new THREE.DirectionalLight(0xff8844, 0.6);
 sunLight.position.set(180,260,120);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 500;
-sunLight.shadow.camera.left = -160;
-sunLight.shadow.camera.right = 160;
-sunLight.shadow.camera.top = 160;
-sunLight.shadow.camera.bottom = -160;
 scene.add(sunLight);
-const fillLight = new THREE.DirectionalLight(0x883333, 0.3);
+const fillLight = new THREE.DirectionalLight(0x883333, 0.2);
 fillLight.position.set(-160,120,-140);
 scene.add(fillLight);
 
@@ -380,7 +370,7 @@ function createPlayer(){
   playerGroup.visible = true;
 }
 
-/* ===== PISTOLA ===== */
+/* ===== PISTOLA - COLADA NO JOGADOR (via overlay) ===== */
 const gunCamera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 10);
 gunCamera.position.set(0, 0, 1);
 gunCamera.lookAt(0, 0, 0);
@@ -398,33 +388,37 @@ function createGun(){
     child.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); });
   }
   
+  // Arma 60% menor
+  const scale = 0.6;
+  
   const metalMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.7, roughness: 0.3 });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x444455, metalness: 0.5, roughness: 0.4 });
   const gripMat = new THREE.MeshStandardMaterial({ color: 0x2d1f0e, roughness: 0.9 });
   
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.30), metalMat);
-  body.position.set(0, 0, -0.12);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.08*scale, 0.16*scale, 0.30*scale), metalMat);
+  body.position.set(0, 0, -0.12*scale);
   gunGroup.add(body);
   
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.20, 8), darkMat);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.02*scale, 0.025*scale, 0.20*scale, 6), darkMat);
   barrel.rotation.x = Math.PI/2;
-  barrel.position.set(0, 0.02, -0.32);
+  barrel.position.set(0, 0.02*scale, -0.32*scale);
   gunGroup.add(barrel);
   
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.18, 0.06), gripMat);
-  grip.position.set(0, -0.06, -0.02);
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05*scale, 0.18*scale, 0.06*scale), gripMat);
+  grip.position.set(0, -0.06*scale, -0.02*scale);
   grip.rotation.x = 0.15;
   gunGroup.add(grip);
   
-  const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.035, 0.015), darkMat);
-  trigger.position.set(0, -0.02, -0.08);
+  const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.015*scale, 0.035*scale, 0.015*scale), darkMat);
+  trigger.position.set(0, -0.02*scale, -0.08*scale);
   gunGroup.add(trigger);
   
-  const sight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.005), darkMat);
-  sight.position.set(0, 0.085, -0.35);
+  const sight = new THREE.Mesh(new THREE.BoxGeometry(0.02*scale, 0.015*scale, 0.005*scale), darkMat);
+  sight.position.set(0, 0.085*scale, -0.35*scale);
   gunGroup.add(sight);
   
-  gunGroup.position.set(0.28, -0.12, -0.45);
+  // Posição colada no jogador (canto inferior direito da tela)
+  gunGroup.position.set(0.22, -0.10, -0.30);
   gunGroup.rotation.z = 0.12;
   gunGroup.rotation.x = -0.02;
 }
@@ -433,11 +427,11 @@ let gunRecoil = 0;
 let gunRecoilTime = 0;
 
 function updateGun(dt, isShooting){
-  const baseX = 0.28;
-  const baseY = -0.12;
-  const baseZ = -0.45;
+  const baseX = 0.22;
+  const baseY = -0.10;
+  const baseZ = -0.30;
   
-  const breath = Math.sin(performance.now() / 2000) * 0.002;
+  const breath = Math.sin(performance.now() / 2000) * 0.001;
   
   if(gunRecoil > 0 || isShooting){
     if(isShooting && gunRecoil === 0){
@@ -446,26 +440,26 @@ function updateGun(dt, isShooting){
     }
     if(gunRecoil > 0){
       gunRecoilTime += dt;
-      const progress = gunRecoilTime / 0.12;
+      const progress = gunRecoilTime / 0.10;
       if(progress >= 1){
         gunRecoil = 0;
         gunRecoilTime = 0;
       } else {
-        const ease = Math.sin(progress * Math.PI) * 0.03;
+        const ease = Math.sin(progress * Math.PI) * 0.02;
         gunGroup.position.x = baseX + ease * 0.4;
-        gunGroup.position.y = baseY - ease * 0.7;
-        gunGroup.position.z = baseZ + ease * 0.3;
-        gunGroup.rotation.x = -0.02 - ease * 0.25;
+        gunGroup.position.y = baseY - ease * 0.6;
+        gunGroup.position.z = baseZ + ease * 0.2;
+        gunGroup.rotation.x = -0.02 - ease * 0.2;
         return;
       }
     }
   }
   
   gunGroup.position.x = baseX + breath;
-  gunGroup.position.y = baseY + Math.sin(performance.now() / 3000) * 0.002;
+  gunGroup.position.y = baseY + Math.sin(performance.now() / 3000) * 0.001;
   gunGroup.position.z = baseZ;
   gunGroup.rotation.x = -0.02;
-  gunGroup.rotation.z = 0.12 + Math.sin(performance.now() / 4000) * 0.002;
+  gunGroup.rotation.z = 0.12 + Math.sin(performance.now() / 4000) * 0.001;
 }
 
 function triggerRecoil(){
@@ -488,7 +482,7 @@ function createBullet(origin, direction){
   mesh.position.copy(origin);
   scene.add(mesh);
   
-  const light = new THREE.PointLight(0xffaa44, 0.5, 3);
+  const light = new THREE.PointLight(0xffaa44, 0.3, 2);
   light.position.copy(origin);
   scene.add(light);
   setTimeout(() => { scene.remove(light); light.dispose(); }, 50);
@@ -544,7 +538,7 @@ function showToast(msg){
   el.textContent = msg;
   el.style.opacity = '1';
   if(toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>{ el.style.opacity='0'; }, 1500);
+  toastTimer = setTimeout(()=>{ el.style.opacity='0'; }, 1200);
 }
 
 /* ===== ANOMALIAS ===== */
@@ -580,8 +574,8 @@ const MONSTER_DATA = {
 };
 
 let monsterSpawnTimer = 0;
-const MONSTER_SPAWN_INTERVAL = 2.0;
-const MAX_MONSTERS = 30;
+const MONSTER_SPAWN_INTERVAL = 2.5;
+const MAX_MONSTERS = 20;
 
 let monsterProjectiles = [];
 
@@ -937,7 +931,7 @@ function spawnMonster(nearPos){
   const data = MONSTER_DATA[type];
   
   const angle = Math.random() * Math.PI * 2;
-  const dist = 25 + Math.random() * 150;
+  const dist = 30 + Math.random() * 120;
   const x = nearPos.x + Math.cos(angle) * dist;
   const z = nearPos.z + Math.sin(angle) * dist;
   const layerY = Math.round(nearPos.y / LAYER_HEIGHT) * LAYER_HEIGHT;
@@ -996,7 +990,7 @@ function updateMonsters(dt, playerPos){
   for(let i = monsters.length - 1; i >= 0; i--){
     const m = monsters[i];
     const d = m.pos.distanceTo(playerPos);
-    if(d > 350){
+    if(d > 300){
       monstersGroup.remove(m.mesh);
       m.mesh.traverse(o=>{
         if(o.geometry) o.geometry.dispose();
@@ -1051,7 +1045,7 @@ function updateMonsters(dt, playerPos){
       }
     }
     
-    if(m.pos.distanceTo(playerPos) < 200){
+    if(m.pos.distanceTo(playerPos) < 150){
       const dirToPlayer = new THREE.Vector3().copy(playerPos).sub(m.pos);
       dirToPlayer.y = 0;
       const distToPlayer = dirToPlayer.length();
@@ -1162,29 +1156,52 @@ function updateHealthBar(){
   document.getElementById('healthBarInner').style.width = pct + '%';
 }
 
-/* ===== ESCALADA ===== */
+/* ===== ESCALADA MELHORADA ===== */
 function findClimbTarget(){
   const dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
   dir.y = 0;
   dir.normalize();
   
+  // Verifica se há algo à frente
   const origin = player.position.clone();
-  origin.y -= EYE_HEIGHT / 2;
+  origin.y -= EYE_HEIGHT * 0.3;
   
   raycaster.set(origin, dir);
   raycaster.far = CLIMB_RANGE;
   const hits = raycaster.intersectObjects(collidablesList, false);
   
-  if(hits.length > 0 && hits[0].distance > 0.5){
+  if(hits.length > 0 && hits[0].distance > 0.3){
     const point = hits[0].point;
-    const aboveOrigin = point.clone();
-    aboveOrigin.y += 2.5;
-    raycaster.set(aboveOrigin, dir);
-    raycaster.far = 0.5;
-    const aboveHits = raycaster.intersectObjects(collidablesList, false);
-    if(aboveHits.length === 0) return point;
+    // Verifica se o ponto está em uma altura razoável para escalar
+    const heightAbove = point.y - (player.position.y - EYE_HEIGHT);
+    if(heightAbove > 0.1 && heightAbove < 4.0){
+      // Verifica espaço acima
+      const aboveOrigin = point.clone();
+      aboveOrigin.y += 2.0;
+      raycaster.set(aboveOrigin, dir);
+      raycaster.far = 0.5;
+      const aboveHits = raycaster.intersectObjects(collidablesList, false);
+      if(aboveHits.length === 0){
+        return point;
+      }
+    }
   }
+  
+  // Tenta escalar para cima (parede vertical)
+  const upOrigin = player.position.clone();
+  upOrigin.y += 0.5;
+  raycaster.set(upOrigin, dir);
+  raycaster.far = CLIMB_RANGE;
+  const upHits = raycaster.intersectObjects(collidablesList, false);
+  if(upHits.length > 0 && upHits[0].distance > 0.3){
+    const point = upHits[0].point;
+    const heightAbove = point.y - (player.position.y - EYE_HEIGHT);
+    if(heightAbove > 0.1 && heightAbove < 4.0){
+      return point;
+    }
+  }
+  
   return null;
 }
 
@@ -1198,7 +1215,7 @@ function startClimb(){
     showToast('🧗 Escalando...');
     document.getElementById('btnClimb')?.classList.add('active');
   } else {
-    showToast('❌ Nada para escalar aqui');
+    showToast('❌ Nada para escalar');
   }
 }
 
@@ -1217,11 +1234,14 @@ function updateClimb(dt){
   climbProgress += dt * CLIMB_SPEED;
   
   const targetPos = climbTarget.clone();
-  targetPos.y += climbProgress * 2;
+  targetPos.y += climbProgress * 1.8;
   
+  // Move o jogador para a posição da escalada
   const newPos = targetPos.clone();
-  newPos.y += EYE_HEIGHT;
+  newPos.x += 0.3; // Pequeno offset para ficar na frente da parede
+  newPos.y += EYE_HEIGHT - 0.2;
   
+  // Verifica colisão durante a escalada
   raycaster.set(newPos, new THREE.Vector3(0, -1, 0));
   raycaster.far = 2;
   const groundHits = raycaster.intersectObjects(collidablesList, false);
@@ -1231,6 +1251,7 @@ function updateClimb(dt){
   
   player.position.copy(newPos);
   
+  // Verifica se chegou ao topo
   if(climbProgress > 2.5){
     stopClimb();
     showToast('✅ Escalada concluída!');
@@ -1459,7 +1480,7 @@ function buildChunkMesh(boxes){
   return mesh;
 }
 
-/* ---------------- STREAMING ---------------- */
+/* ---------------- STREAMING OTIMIZADO ---------------- */
 const chunkGroup = new THREE.Group();
 scene.add(chunkGroup);
 const chunkMap = new Map();
@@ -1497,7 +1518,6 @@ function unloadChunk(key){
   rebuildCollidables();
 }
 
-/* ===== STREAMING DIRETO (SEM LOADING) ===== */
 function nearestMissingChunks(px, py, pz, radius, forwardX, forwardZ){
   const currentLayer = getLayerFromY(py);
   const layerRange = Math.ceil(radius/LAYER_HEIGHT)+1;
@@ -1528,7 +1548,8 @@ function nearestMissingChunks(px, py, pz, radius, forwardX, forwardZ){
 
 function updateStreaming(px, py, pz, forwardX, forwardZ, budget){
   const candidates = nearestMissingChunks(px, py, pz, ACTIVE_RADIUS, forwardX, forwardZ);
-  for(let i=0;i<Math.min(budget, candidates.length); i++){ requestChunk(candidates[i].cx, candidates[i].cz, candidates[i].layer); }
+  const toLoad = Math.min(budget, candidates.length);
+  for(let i=0;i<toLoad;i++){ requestChunk(candidates[i].cx, candidates[i].cz, candidates[i].layer); }
   for(const [key,c] of chunkMap){
     const centerX = c.cx*CHUNK_SIZE+CHUNK_SIZE/2, centerZ = c.cz*CHUNK_SIZE+CHUNK_SIZE/2;
     const layerY = c.layer*LAYER_HEIGHT;
@@ -1787,7 +1808,6 @@ function beginGame(selectedModeArg){
   mode = selectedModeArg;
   document.getElementById('startScreen').style.display = 'none';
   
-  // Mostra HUD e crosshair imediatamente
   document.getElementById('hud').style.display = 'block';
   document.getElementById('crosshair').style.display = 'block';
   if(mode==='pc'){ document.getElementById('pcHint').style.display = 'block'; }
@@ -1849,9 +1869,8 @@ function beginGame(selectedModeArg){
   climbTarget = null;
   climbProgress = 0;
   
-  // Carrega chunks iniciais
   const initialCandidates = nearestMissingChunks(0, 0, 0, INITIAL_RADIUS, 0, -1);
-  const toLoad = Math.min(20, initialCandidates.length);
+  const toLoad = Math.min(16, initialCandidates.length);
   for(let i=0; i<toLoad; i++){
     requestChunk(initialCandidates[i].cx, initialCandidates[i].cz, initialCandidates[i].layer);
   }
@@ -1872,7 +1891,7 @@ let started = false;
 function animate(){
   if(!started){ started = true; clock.start(); }
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.06);
+  const dt = Math.min(clock.getDelta(), 0.05);
 
   if(isDead){ renderer.render(scene, camera); return; }
 
@@ -1884,7 +1903,7 @@ function animate(){
   updateGun(dt, shootTimer > 0.1);
   
   _fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));
-  updateStreaming(player.position.x, player.position.y, player.position.z, _fwd.x, _fwd.z, 3);
+  updateStreaming(player.position.x, player.position.y, player.position.z, _fwd.x, _fwd.z, 2);
   animateChunks(dt);
   updateMonsters(dt, player.position);
   updateBullets(dt);
