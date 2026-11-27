@@ -4,51 +4,51 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
 
-let scene, camera, renderer, clock, composer;
+// ==========================================
+// CONFIGURAÇÕES GLOBAIS DO AMBIENTE
+// ==========================================
+const WORLD_SIZE = 200;
+const WATER_LEVEL = -1.5;
+const NOISE_SCALE = 0.015;
+
+let scene, camera, renderer, composer, clock;
+let waterMaterial;
+let floatingParticles;
 let isGameActive = false;
-let health = 100, coins = 0, ammo = 30, currentWeapon = 1;
 let yaw = 0, pitch = 0;
-let canJump = true, velocityY = 0;
 const keys = {};
-let enemies = [];
-let walls = []; // Colisão das árvores grandes
-let weaponModel;
-let weaponRecoil = 0;
 
 const canvas = document.getElementById('game-canvas');
 const overlay = document.getElementById('overlay');
-const hudHealth = document.getElementById('hud-health');
-const hudCoins = document.getElementById('hud-coins');
-const hudWeapon = document.getElementById('hud-weapon');
-const hudAmmo = document.getElementById('hud-ammo');
 
-// Ruído para gerar o terreno
 const perlin = new ImprovedNoise();
-const z = 100;
+const zOffset = Math.random() * 100;
 
+// ==========================================
+// INICIALIZAÇÃO
+// ==========================================
 function init() {
     scene = new THREE.Scene();
-    // Cor da névoa (umidade da floresta)
-    const fogColor = 0x1a2e14; 
-    scene.fog = new THREE.FogExp2(fogColor, 0.025); 
+    // Névoa espessa e azulada simulando umidade extrema da selva
+    scene.fog = new THREE.FogExp2(0x0a1510, 0.02);
 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 2.5, 0); // Câmera um pouco mais alta por causa das colinas
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.set(0, getTerrainHeight(0, 0) + 2.5, 0);
 
     renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: "high-performance" });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.5;
+    renderer.toneMappingExposure = 1.2;
 
     clock = new THREE.Clock();
 
-    // Efeito de brilho (dá um aspecto de umidade e luz filtrada)
+    // Pós-processamento para brilho (Bloom)
     const renderScene = new RenderPass(scene, camera);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.4, 0.85);
-    bloomPass.threshold = 0.8;
-    bloomPass.strength = 0.5;
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.6, 0.85);
+    bloomPass.threshold = 0.7;
+    bloomPass.strength = 0.6;
 
     composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
@@ -56,22 +56,15 @@ function init() {
 
     setupLights();
     generateTerrain();
-    populateForest();
-    createWeaponModel();
-    spawnEnemies();
+    generateWater();
+    generateFlora();
+    generateDetails();
+    generateAtmosphere();
     setupControls();
-    updateHUD();
 
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        composer.setSize(window.innerWidth, window.innerHeight);
-    });
-
+    window.addEventListener('resize', onWindowResize);
     overlay.addEventListener('click', () => {
         canvas.requestPointerLock();
-        initAudio();
     });
 
     document.addEventListener('pointerlockchange', () => {
@@ -82,79 +75,137 @@ function init() {
     animate();
 }
 
-function setupLights() {
-    // Luz ambiente verde-escura (sombra da floresta)
-    scene.add(new THREE.AmbientLight(0x1a2e14, 1.0));
-    
-    // O Sol (Raios de luz)
-    const sunLight = new THREE.DirectionalLight(0xffeebb, 3.5);
-    sunLight.position.set(30, 50, -20); // Sol inclinado para criar sombras longas
-    sunLight.castShadow = true;
-    
-    // Otimização das sombras
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 150;
-    sunLight.shadow.camera.left = -60;
-    sunLight.shadow.camera.right = 60;
-    sunLight.shadow.camera.top = 60;
-    sunLight.shadow.camera.bottom = -60;
-    sunLight.shadow.bias = -0.001; // Remove o "serrilhado" das sombras
-    scene.add(sunLight);
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
 }
 
 // ==========================================
-// TERRENO E FLORESTA AVANÇADA
+// 1. ILUMINAÇÃO ATMOSFÉRICA
 // ==========================================
+function setupLights() {
+    // Luz ambiente escura (selva fechada)
+    const ambientLight = new THREE.AmbientLight(0x1b3320, 1.5);
+    scene.add(ambientLight);
+
+    // Luz hemisférica (céu verde/azulado e chão marrom)
+    const hemiLight = new THREE.HemisphereLight(0x2a4a3a, 0x1a1208, 1.0);
+    scene.add(hemiLight);
+
+    // Sol (Raios de luz volumétricos falsos)
+    const sunLight = new THREE.DirectionalLight(0xffddaa, 4.0);
+    sunLight.position.set(40, 60, -30);
+    sunLight.castShadow = true;
+    
+    // Otimização de sombras
+    sunLight.shadow.mapSize.width = 4096;
+    sunLight.shadow.mapSize.height = 4096;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 200;
+    sunLight.shadow.camera.left = -100;
+    sunLight.shadow.camera.right = 100;
+    sunLight.shadow.camera.top = 100;
+    sunLight.shadow.camera.bottom = -100;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    // Luzes bioluminescentes espalhadas
+    for (let i = 0; i < 10; i++) {
+        const pointLight = new THREE.PointLight(0x00ff88, 2, 20);
+        pointLight.position.set(
+            (Math.random() - 0.5) * WORLD_SIZE,
+            Math.random() * 5,
+            (Math.random() - 0.5) * WORLD_SIZE
+        );
+        scene.add(pointLight);
+    }
+}
+
+// ==========================================
+// 2. GERAÇÃO DO TERRENO
+// ==========================================
+function getTerrainHeight(x, z) {
+    let height = perlin.noise(x * NOISE_SCALE, z * NOISE_SCALE, zOffset) * 15;
+    height += perlin.noise(x * NOISE_SCALE * 3, z * NOISE_SCALE * 3, zOffset) * 5;
+    height += perlin.noise(x * NOISE_SCALE * 8, z * NOISE_SCALE * 8, zOffset) * 1.5;
+    
+    // Cava um leito de rio no centro do mapa
+    const distToRiver = Math.abs(x - Math.sin(z * 0.05) * 20);
+    if (distToRiver < 15) {
+        const riverFactor = 1 - (distToRiver / 15);
+        height -= riverFactor * 10;
+    }
+    
+    return height;
+}
+
 function generateTerrain() {
-    // Gera uma textura procedural super detalhada para o chão
-    const canvasSize = 512;
+    const canvasSize = 1024;
     const c = document.createElement('canvas');
     c.width = canvasSize; c.height = canvasSize;
     const ctx = c.getContext('2d');
     
-    // Base marrom escura (terra)
-    ctx.fillStyle = '#1e1108'; ctx.fillRect(0, 0, canvasSize, canvasSize);
+    // Base da terra
+    ctx.fillStyle = '#24180d'; 
+    ctx.fillRect(0, 0, canvasSize, canvasSize);
     
-    // Manchas verdes (musgo e grama)
-    for (let i = 0; i < 15000; i++) {
+    // Ruído de grama e musgo
+    for (let i = 0; i < 80000; i++) {
         const x = Math.random() * canvasSize;
         const y = Math.random() * canvasSize;
-        const r = Math.random() * 4;
-        ctx.fillStyle = Math.random() > 0.4 ? '#2d4c1e' : '#1a330d';
+        const r = Math.random() * 5;
+        const colors = ['#2d4c1e', '#1a330d', '#3b5e28', '#122408'];
+        ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
     
-    // Folhas secas (pontos marrons)
-    for (let i = 0; i < 8000; i++) {
-        ctx.fillStyle = '#3b2b1a';
-        ctx.fillRect(Math.random() * canvasSize, Math.random() * canvasSize, 2, 2);
+    // Folhas secas
+    for (let i = 0; i < 20000; i++) {
+        ctx.fillStyle = '#4a3018';
+        ctx.fillRect(Math.random() * canvasSize, Math.random() * canvasSize, 3, 2);
     }
 
     const groundTex = new THREE.CanvasTexture(c);
     groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
-    groundTex.repeat.set(30, 30);
+    groundTex.repeat.set(40, 40);
     groundTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-    // Cria um terreno com colinas suaves (em vez de plano)
-    const terrainGeo = new THREE.PlaneGeometry(200, 200, 64, 64);
+    const terrainGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, 128, 128);
     terrainGeo.rotateX(-Math.PI / 2);
 
     const vertices = terrainGeo.attributes.position.array;
+    const colors = [];
+    
+    const colorLow = new THREE.Color(0x3b2b1a); // Terra úmida
+    const colorMid = new THREE.Color(0x1e4014); // Grama
+    const colorHigh = new THREE.Color(0x2a5c1a); // Musgo/Vegetação alta
+
     for (let i = 0; i < vertices.length; i += 3) {
         const x = vertices[i];
         const z = vertices[i + 2];
-        // Gera altura usando Perlin Noise
-        const height = perlin.noise(x * 0.05, z * 0.05, 0) * 3;
-        vertices[i + 1] = height; 
+        const h = getTerrainHeight(x, z);
+        vertices[i + 1] = h; 
+
+        // Coloração baseada na altura
+        if (h < WATER_LEVEL + 1) {
+            colors.push(colorLow.r, colorLow.g, colorLow.b);
+        } else if (h < 5) {
+            colors.push(colorMid.r, colorMid.g, colorMid.b);
+        } else {
+            colors.push(colorHigh.r, colorHigh.g, colorHigh.b);
+        }
     }
-    terrainGeo.computeVertexNormals(); // Corrige a iluminação
+    
+    terrainGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    terrainGeo.computeVertexNormals();
 
     const groundMat = new THREE.MeshStandardMaterial({ 
-        map: groundTex, 
-        roughness: 1.0,
-        color: 0x888888 // Escurece um pouco a textura base
+        map: groundTex,
+        vertexColors: true, // Mistura a textura com as cores de altura
+        roughness: 0.95,
+        metalness: 0.05
     });
 
     const terrain = new THREE.Mesh(terrainGeo, groundMat);
@@ -162,82 +213,255 @@ function generateTerrain() {
     scene.add(terrain);
 }
 
-function populateForest() {
-    // MATERIAIS
-    const barkMat = new THREE.MeshStandardMaterial({ color: 0x2b1d14, roughness: 1.0, bumpScale: 0.1 });
-    const leafMat1 = new THREE.MeshStandardMaterial({ color: 0x143814, roughness: 0.9 }); // Copa escura
-    const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x1e571e, roughness: 0.9 }); // Copa clara
-    const fernMat = new THREE.MeshStandardMaterial({ color: 0x2d7a2d, side: THREE.DoubleSide, roughness: 1 });
-
-    // Geometrias compartilhadas (Performance)
-    const trunkGeo = new THREE.CylinderGeometry(0.2, 0.5, 8, 5);
-    const leafGeo = new THREE.ConeGeometry(2.5, 4, 5);
-    const fernGeo = new THREE.ConeGeometry(1.5, 0.8, 4, 1, true);
-
-    // INSTANCED MESH (Renderiza milhares de objetos de uma vez sem travar)
-    const totalTrees = 800;
-    const trunks = new THREE.InstancedMesh(trunkGeo, barkMat, totalTrees);
-    const leaves1 = new THREE.InstancedMesh(leafGeo, leafMat1, totalTrees);
-    const leaves2 = new THREE.InstancedMesh(leafGeo, leafMat2, totalTrees);
+// ==========================================
+// 3. ÁGUA (RIO PROCEDURAL)
+// ==========================================
+function generateWater() {
+    const waterGeo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, 64, 64);
+    waterGeo.rotateX(-Math.PI / 2);
     
-    trunks.castShadow = true; leaves1.castShadow = true; leaves2.castShadow = true;
+    waterMaterial = new THREE.MeshStandardMaterial({
+        color: 0x0a2a1a,
+        transparent: true,
+        opacity: 0.85,
+        roughness: 0.1,
+        metalness: 0.8,
+        emissive: 0x001105
+    });
 
+    const water = new THREE.Mesh(waterGeo, waterMaterial);
+    water.position.y = WATER_LEVEL;
+    water.receiveShadow = true;
+    scene.add(water);
+}
+
+// ==========================================
+// 4. FLORA (PROCEDURAL E OTIMIZADA)
+// ==========================================
+function generateFlora() {
+    // 4.1 ÁRVORES GIGANTES (Dossel)
+    createGiantTrees();
+    // 4.2 ÁRVORES MÉDIAS E PALMEIRAS
+    createMidTrees();
+    // 4.3 SAMAMBAIAS E ARBUSTOS
+    createFerns();
+}
+
+function createGiantTrees() {
+    const count = 150;
     const dummy = new THREE.Object3D();
 
-    for (let i = 0; i < totalTrees; i++) {
-        // Posição aleatória no terreno
-        const x = (Math.random() - 0.5) * 180;
-        const z = (Math.random() - 0.5) * 180;
-        
-        // Não gera árvores em cima do spawn do jogador
-        if (Math.abs(x) < 6 && Math.abs(z) < 6) continue;
+    // Geometrias e Materiais
+    const trunkGeo = new THREE.CylinderGeometry(1.5, 3, 40, 7);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x1a110a, roughness: 0.9, flatShading: true });
+    const canopyGeo = new THREE.DodecahedronGeometry(12, 1);
+    const canopyMat = new THREE.MeshStandardMaterial({ color: 0x0e2a0e, roughness: 0.8, flatShading: true });
 
-        const h = perlin.noise(x * 0.05, z * 0.05, 0) * 3; // Altura do terreno
+    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, count);
+    const canopies = new THREE.InstancedMesh(canopyGeo, canopyMat, count);
+    trunks.castShadow = true; canopies.castShadow = true;
+    trunks.receiveShadow = true; canopies.receiveShadow = true;
+
+    for (let i = 0; i < count; i++) {
+        const x = (Math.random() - 0.5) * (WORLD_SIZE - 20);
+        const z = (Math.random() - 0.5) * (WORLD_SIZE - 20);
+        const h = getTerrainHeight(x, z);
+
+        if (h < WATER_LEVEL + 1) continue; // Não nasce na água
 
         // Tronco
-        dummy.position.set(x, h + 4, z);
+        dummy.position.set(x, h + 20, z);
         dummy.rotation.y = Math.random() * Math.PI;
         dummy.scale.set(1, 1 + Math.random() * 0.5, 1);
         dummy.updateMatrix();
         trunks.setMatrixAt(i, dummy.matrix);
 
-        // Copa (Nível 1)
-        dummy.position.set(x, h + 8, z);
+        // Copa
+        dummy.position.set(x, h + 40, z);
+        dummy.rotation.set(Math.random(), Math.random(), Math.random());
         dummy.scale.set(1 + Math.random(), 1 + Math.random(), 1 + Math.random());
         dummy.updateMatrix();
-        leaves1.setMatrixAt(i, dummy.matrix);
-
-        // Copa (Nível 2 - mais para cima)
-        dummy.position.set(x, h + 11, z);
-        dummy.scale.set(0.7, 0.7, 0.7);
-        dummy.updateMatrix();
-        leaves2.setMatrixAt(i, dummy.matrix);
-
-        // Colisão
-        walls.push({ minX: x - 0.5, maxX: x + 0.5, minZ: z - 0.5, maxZ: z + 0.5 });
+        canopies.setMatrixAt(i, dummy.matrix);
     }
+    scene.add(trunks, canopies);
+}
 
-    scene.add(trunks, leaves1, leaves2);
+function createMidTrees() {
+    const count = 400;
+    const dummy = new THREE.Object3D();
 
-    // ADICIONA SAMAMBAIAS (Mato no chão)
-    const totalFerns = 400;
-    const ferns = new THREE.InstancedMesh(fernGeo, fernMat, totalFerns);
-    for (let i = 0; i < totalFerns; i++) {
-        const x = (Math.random() - 0.5) * 180;
-        const z = (Math.random() - 0.5) * 180;
-        if (Math.abs(x) < 3 && Math.abs(z) < 3) continue;
-        const h = perlin.noise(x * 0.05, z * 0.05, 0) * 3;
-        dummy.position.set(x, h + 0.4, z);
+    const trunkGeo = new THREE.CylinderGeometry(0.3, 0.6, 12, 5);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x2b1d14, roughness: 1, flatShading: true });
+    
+    const leafGeo = new THREE.ConeGeometry(3, 6, 5);
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x1e571e, roughness: 0.9, flatShading: true });
+
+    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, count);
+    const leaves = new THREE.InstancedMesh(leafGeo, leafMat, count);
+    trunks.castShadow = true; leaves.castShadow = true;
+
+    for (let i = 0; i < count; i++) {
+        const x = (Math.random() - 0.5) * WORLD_SIZE;
+        const z = (Math.random() - 0.5) * WORLD_SIZE;
+        const h = getTerrainHeight(x, z);
+
+        if (h < WATER_LEVEL) continue;
+
+        dummy.position.set(x, h + 6, z);
         dummy.rotation.y = Math.random() * Math.PI;
-        dummy.scale.set(1 + Math.random(), 1 + Math.random(), 1 + Math.random());
+        dummy.scale.set(1, 1 + Math.random(), 1);
+        dummy.updateMatrix();
+        trunks.setMatrixAt(i, dummy.matrix);
+
+        dummy.position.set(x, h + 12, z);
+        dummy.rotation.set(0, Math.random(), 0);
+        dummy.updateMatrix();
+        leaves.setMatrixAt(i, dummy.matrix);
+    }
+    scene.add(trunks, leaves);
+}
+
+function createFerns() {
+    const count = 1000;
+    const dummy = new THREE.Object3D();
+
+    const fernGeo = new THREE.ConeGeometry(1.5, 1.5, 4);
+    const fernMat = new THREE.MeshStandardMaterial({ color: 0x2d7a2d, roughness: 1, flatShading: true });
+
+    const ferns = new THREE.InstancedMesh(fernGeo, fernMat, count);
+    
+    for (let i = 0; i < count; i++) {
+        const x = (Math.random() - 0.5) * WORLD_SIZE;
+        const z = (Math.random() - 0.5) * WORLD_SIZE;
+        const h = getTerrainHeight(x, z);
+
+        if (h < WATER_LEVEL + 0.5) continue;
+
+        dummy.position.set(x, h + 0.75, z);
+        dummy.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * Math.PI, (Math.random() - 0.5) * 0.5);
+        dummy.scale.set(1 + Math.random() * 2, 1 + Math.random(), 1 + Math.random() * 2);
         dummy.updateMatrix();
         ferns.setMatrixAt(i, dummy.matrix);
     }
+    ferns.castShadow = true;
     scene.add(ferns);
 }
 
 // ==========================================
-// CONTROLES E LÓGICA DO JOGADOR
+// 5. DETALHES AMBIENTAIS
+// ==========================================
+function generateDetails() {
+    // 5.1 PEDRAS MUSGOSAS
+    const rockCount = 200;
+    const dummy = new THREE.Object3D();
+    const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 1, flatShading: true });
+    const rocks = new THREE.InstancedMesh(rockGeo, rockMat, rockCount);
+
+    for (let i = 0; i < rockCount; i++) {
+        const x = (Math.random() - 0.5) * WORLD_SIZE;
+        const z = (Math.random() - 0.5) * WORLD_SIZE;
+        const h = getTerrainHeight(x, z);
+        
+        dummy.position.set(x, h + 0.5, z);
+        dummy.rotation.set(Math.random(), Math.random(), Math.random());
+        dummy.scale.set(1 + Math.random() * 3, 1 + Math.random() * 2, 1 + Math.random() * 3);
+        dummy.updateMatrix();
+        rocks.setMatrixAt(i, dummy.matrix);
+    }
+    rocks.castShadow = true; rocks.receiveShadow = true;
+    scene.add(rocks);
+
+    // 5.2 CIPÓS (Linhas penduradas)
+    const vineMat = new THREE.LineBasicMaterial({ color: 0x1a330d });
+    const vineGeo = new THREE.BufferGeometry();
+    const vinePositions = [];
+    
+    for (let i = 0; i < 300; i++) {
+        const x = (Math.random() - 0.5) * WORLD_SIZE;
+        const z = (Math.random() - 0.5) * WORLD_SIZE;
+        const h = getTerrainHeight(x, z);
+        const startY = h + 30 + Math.random() * 10;
+        const length = 5 + Math.random() * 15;
+        
+        // Cria uma linha curva (simplificada)
+        for (let j = 0; j < length; j++) {
+            if (j === 0) {
+                vinePositions.push(x, startY, z);
+            } else {
+                vinePositions.push(x + Math.sin(j * 0.5) * 0.2, startY - j, z + Math.cos(j * 0.5) * 0.2);
+            }
+        }
+    }
+    vineGeo.setAttribute('position', new THREE.Float32BufferAttribute(vinePositions, 3));
+    const vines = new THREE.LineSegments(vineGeo, vineMat);
+    scene.add(vines);
+
+    // 5.3 COGUMELOS BIOLUMINESCENTES
+    const mushroomCount = 50;
+    const stemGeo = new THREE.CylinderGeometry(0.1, 0.15, 1, 5);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0xdddddd });
+    const capGeo = new THREE.SphereGeometry(0.4, 6, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+    const capMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 }); // Brilha com o Bloom
+
+    const stems = new THREE.InstancedMesh(stemGeo, stemMat, mushroomCount);
+    const caps = new THREE.InstancedMesh(capGeo, capMat, mushroomCount);
+
+    for (let i = 0; i < mushroomCount; i++) {
+        const x = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
+        const z = (Math.random() - 0.5) * WORLD_SIZE * 0.8;
+        const h = getTerrainHeight(x, z);
+        
+        if (h < WATER_LEVEL + 0.5) continue;
+
+        dummy.position.set(x, h + 0.5, z);
+        dummy.scale.set(1, 1 + Math.random(), 1);
+        dummy.updateMatrix();
+        stems.setMatrixAt(i, dummy.matrix);
+
+        dummy.position.set(x, h + 1, z);
+        dummy.scale.set(1 + Math.random(), 0.5 + Math.random(), 1 + Math.random());
+        dummy.updateMatrix();
+        caps.setMatrixAt(i, dummy.matrix);
+    }
+    scene.add(stems, caps);
+}
+
+// ==========================================
+// 6. ATMOSFERA (PARTÍCULAS E POEIRA)
+// ==========================================
+function generateAtmosphere() {
+    const particleCount = 2000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = [];
+
+    for (let i = 0; i < particleCount; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * WORLD_SIZE;
+        positions[i * 3 + 1] = Math.random() * 40;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * WORLD_SIZE;
+        velocities.push({
+            y: (Math.random() - 0.5) * 0.02,
+            x: (Math.random() - 0.5) * 0.02
+        });
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const material = new THREE.PointsMaterial({
+        color: 0x88ffaa,
+        size: 0.15,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending
+    });
+
+    floatingParticles = new THREE.Points(geometry, material);
+    scene.add(floatingParticles);
+}
+
+// ==========================================
+// 7. CONTROLES DE VOO LIVRE (NOCLIP)
 // ==========================================
 function setupControls() {
     document.addEventListener('mousemove', (e) => {
@@ -250,215 +474,59 @@ function setupControls() {
 
     document.addEventListener('keydown', (e) => keys[e.code] = true);
     document.addEventListener('keyup', (e) => keys[e.code] = false);
-
-    document.addEventListener('mousedown', (e) => {
-        if (!isGameActive) return;
-        if (e.button === 0) shootOrMelee();
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.code === 'Digit1') { currentWeapon = 1; updateWeaponVisual(); updateHUD(); }
-        if (e.code === 'Digit2') { currentWeapon = 2; updateWeaponVisual(); updateHUD(); }
-    });
-    document.addEventListener('contextmenu', e => e.preventDefault());
 }
 
-function updatePlayer(delta) {
+function updateCamera(delta) {
     if (!isGameActive) return;
 
-    // Pulo e Gravidade (Adaptado para o terreno)
-    if (keys['Space'] && canJump) {
-        velocityY = 8;
-        canJump = false;
-    }
-    velocityY -= 25 * delta;
-    camera.position.y += velocityY * delta;
-    
-    // Simula a altura do terreno no ponto onde o jogador está
-    const groundHeight = perlin.noise(camera.position.x * 0.05, camera.position.z * 0.05, 0) * 3;
-    const eyeHeight = groundHeight + 1.8; // Altura dos olhos
-
-    if (camera.position.y <= eyeHeight) {
-        camera.position.y = eyeHeight;
-        velocityY = 0;
-        canJump = true;
-    }
-
-    // Movimento
-    const isRunning = keys['ShiftLeft'];
-    const speed = (isRunning ? 14 : 7) * delta;
+    const speed = (keys['ShiftLeft'] ? 40 : 15) * delta;
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    forward.y = 0; forward.normalize();
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-    right.y = 0; right.normalize();
+    const up = new THREE.Vector3(0, 1, 0);
 
     const moveVector = new THREE.Vector3();
     if (keys['KeyW']) moveVector.add(forward);
     if (keys['KeyS']) moveVector.sub(forward);
     if (keys['KeyD']) moveVector.add(right);
     if (keys['KeyA']) moveVector.sub(right);
-    
+    if (keys['Space']) moveVector.add(up);
+    if (keys['ControlLeft']) moveVector.sub(up);
+
     if (moveVector.length() > 0) {
         moveVector.normalize().multiplyScalar(speed);
-        const nextPos = camera.position.clone().add(moveVector);
-        
-        // Colisão simplificada
-        let collides = false;
-        for (let w of walls) {
-            if (nextPos.x > w.minX - 0.4 && nextPos.x < w.maxX + 0.4 && nextPos.z > w.minZ - 0.4 && nextPos.z < w.maxZ + 0.4) {
-                collides = true; break;
-            }
-        }
-        if (!collides) camera.position.add(moveVector);
-        
-        // Animação da arma
-        const bob = Math.sin(clock.elapsedTime * (isRunning ? 18 : 12)) * 0.05;
-        weaponModel.position.y = -0.3 + bob;
-        weaponModel.position.x = 0.3 + Math.cos(clock.elapsedTime * (isRunning ? 9 : 6)) * 0.05;
+        camera.position.add(moveVector);
     }
-    
-    weaponRecoil = THREE.MathUtils.lerp(weaponRecoil, 0, delta * 10);
-    weaponModel.position.z = -0.5 - weaponRecoil;
 }
 
 // ==========================================
-// ARMAS, INIMIGOS E COMBATE
+// 8. LOOP PRINCIPAL
 // ==========================================
-function createWeaponModel() {
-    weaponModel = new THREE.Group();
-    weaponModel.position.set(0.3, -0.3, -0.5);
-    camera.add(weaponModel);
-    scene.add(camera);
-    updateWeaponVisual();
-}
-
-function updateWeaponVisual() {
-    while(weaponModel.children.length > 0) weaponModel.remove(weaponModel.children[0]);
-    if (currentWeapon === 1) {
-        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 8), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 1 }));
-        mesh.rotation.x = Math.PI / 4; mesh.position.set(0, 0, -0.2);
-        weaponModel.add(mesh);
-        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
-        tip.position.set(0, 0.28, -0.48);
-        weaponModel.add(tip);
-    } else {
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.4), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9 }));
-        mesh.position.set(0, 0, -0.3);
-        weaponModel.add(mesh);
-    }
-}
-
-const raycaster = new THREE.Raycaster();
-
-function spawnEnemies() {
-    const bodyGeo = new THREE.BoxGeometry(0.8, 1.8, 0.8);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1 });
-    const eyeGeo = new THREE.BoxGeometry(0.5, 0.1, 0.1);
-
-    for (let i = 0; i < 10; i++) {
-        const robot = new THREE.Group();
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 0.9; body.castShadow = true;
-        robot.add(body);
-        const eye = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: 0xff0000 }));
-        eye.position.set(0, 1.4, -0.41);
-        robot.add(eye);
-
-        // Spawn em locais aleatórios (mas não em cima do jogador)
-        robot.position.set((Math.random() - 0.5) * 100, 0, (Math.random() - 0.5) * 100);
-        scene.add(robot);
-        enemies.push({ mesh: robot, health: 3, speed: 2.5 + Math.random() * 2, dead: false });
-    }
-}
-
-function updateEnemies(delta) {
-    if (!isGameActive) return;
-    enemies.forEach((enemy) => {
-        if (enemy.dead) return;
-        const dist = camera.position.distanceTo(enemy.mesh.position);
-        
-        // Eles te veem a 40 metros
-        if (dist < 40) {
-            const dir = new THREE.Vector3().subVectors(camera.position, enemy.mesh.position);
-            dir.y = 0; dir.normalize();
-            enemy.mesh.position.add(dir.multiplyScalar(enemy.speed * delta));
-            
-            // Ajusta a altura do robô para não flutuar/sumir no terreno
-            const groundHeight = perlin.noise(enemy.mesh.position.x * 0.05, enemy.mesh.position.z * 0.05, 0) * 3;
-            enemy.mesh.position.y = groundHeight;
-
-            enemy.mesh.lookAt(camera.position.x, groundHeight, camera.position.z);
-            
-            // Olho piscando
-            enemy.mesh.children[1].material.color.setHex(Math.sin(clock.elapsedTime * 15) > 0 ? 0xff0000 : 0x330000);
-
-            if (dist < 2.0) {
-                health -= 15 * delta;
-                updateHUD();
-                renderer.domElement.style.boxShadow = "inset 0 0 150px rgba(255,0,0,0.6)";
-                setTimeout(() => renderer.domElement.style.boxShadow = "none", 100);
-                if (health <= 0) die();
-            }
-        }
-    });
-}
-
-function shootOrMelee() {
-    weaponRecoil = 0.15;
-    if (currentWeapon === 1) {
-        playSound('melee');
-        const hit = raycaster.intersectObjects(enemies.filter(e => !e.dead).map(e => e.mesh), true)[0];
-        if (hit && hit.distance < 3.5) {
-            const enemy = enemies.find(e => e.mesh === hit.object.parent);
-            if (enemy) { enemy.health -= 1; if (enemy.health <= 0) killEnemy(enemy); }
-        }
-    } else {
-        if (ammo <= 0) return;
-        ammo--; playSound('shoot');
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        const hit = raycaster.intersectObjects(enemies.filter(e => !e.dead).map(e => e.mesh), true)[0];
-        if (hit) {
-            const enemy = enemies.find(e => e.mesh === hit.object.parent);
-            if (enemy) { enemy.health -= 1; if (enemy.health <= 0) killEnemy(enemy); }
-        }
-        updateHUD();
-    }
-}
-
-function killEnemy(enemy) {
-    enemy.dead = true; enemy.mesh.visible = false;
-    coins += 10; updateHUD(); playSound('coin');
-}
-
-function die() {
-    isGameActive = false; document.exitPointerLock();
-    overlay.innerHTML = "VOCÊ FOI CAÇADO<br><span>Atualize a página para reiniciar</span>";
-    overlay.style.display = 'flex';
-}
-
-function updateHUD() {
-    hudHealth.innerText = `VIDA: ${Math.ceil(health)}`;
-    hudCoins.innerText = `MOEDAS: ${coins}`;
-    hudWeapon.innerText = currentWeapon === 1 ? "ARMA: PÉ DE CABRA" : "ARMA: PISTOLA";
-    hudAmmo.innerText = currentWeapon === 1 ? "MUNIÇÃO: ∞" : `MUNIÇÃO: ${ammo}`;
-}
-
-let audioCtx;
-function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-function playSound(type) {
-    if (!audioCtx) return;
-    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    if (type === 'shoot') { osc.type = 'square'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); }
-    else if (type === 'melee') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15); osc.start(); osc.stop(audioCtx.currentTime + 0.15); }
-    else if (type === 'coin') { osc.type = 'sine'; osc.frequency.setValueAtTime(1500, audioCtx.currentTime); gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
-}
-
 function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
-    if (isGameActive) { updatePlayer(delta); updateEnemies(delta); }
+    const time = clock.getElapsedTime();
+
+    if (isGameActive) {
+        updateCamera(delta);
+    }
+
+    // Animação da água
+    if (waterMaterial) {
+        waterMaterial.opacity = 0.8 + Math.sin(time * 2) * 0.05;
+    }
+
+    // Animação das partículas flutuantes
+    if (floatingParticles) {
+        const positions = floatingParticles.geometry.attributes.position.array;
+        for (let i = 0; i < positions.length; i += 3) {
+            positions[i + 1] += Math.sin(time + positions[i]) * 0.01;
+            positions[i] += Math.cos(time + positions[i + 2]) * 0.005;
+        }
+        floatingParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
     composer.render();
 }
 
+// Inicia o Showcase
 init();
