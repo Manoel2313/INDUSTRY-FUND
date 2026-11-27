@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>INDUSTRY-FUND</title>
+    <title>INDUSTRY-FUND: Amazônia</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
         #game-canvas { display: block; width: 100%; height: 100%; }
-        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; color: #0ff; text-shadow: 0 0 5px #0ff; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; }
+        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; color: #0f0; text-shadow: 0 0 5px #0f0; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; }
         .hud-top { display: flex; justify-content: space-between; font-size: 24px; font-weight: bold; }
         .hud-bottom { display: flex; justify-content: space-between; font-size: 20px; }
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #0ff; font-size: 32px; cursor: pointer; z-index: 10; text-shadow: 0 0 10px #0ff; transition: background-color 0.3s; }
-        #overlay:hover { background-color: rgba(0, 0, 0, 0.5); }
-        #overlay span { font-size: 16px; margin-top: 20px; color: #f00; text-shadow: 0 0 5px #f00; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: #0ff; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 5px #0ff; pointer-events: none; z-index: 5; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 20, 0, 0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; color: #0f0; font-size: 32px; cursor: pointer; z-index: 10; text-shadow: 0 0 10px #0f0; transition: background-color 0.3s; }
+        #overlay:hover { background-color: rgba(0, 40, 0, 0.9); }
+        #overlay span { font-size: 16px; margin-top: 20px; color: #ff0; text-shadow: 0 0 5px #ff0; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: #0f0; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 5px #0f0; pointer-events: none; z-index: 5; }
     </style>
 </head>
 <body>
@@ -30,11 +30,21 @@
         </div>
     </div>
     <div id="overlay">
-        INDUSTRY-FUND
+        INDUSTRY-FUND: AMAZÔNIA
         <span>Clique para Iniciar<br>WASD Mover | Shift Correr | Space Pular | Mouse Olhar | 1/2 Armas</span>
     </div>
 
-    <!-- Script principal unificado -->
+    <!-- Puxa o motor 3D direto da internet (Garante que não vai falhar por arquivo corrompido) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <!-- Puxa a lógica do jogo -->
     <script type="module" src="./game.js"></script>
 </body>
 </html>
