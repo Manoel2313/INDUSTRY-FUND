@@ -1,4 +1,5 @@
 import * as THREE from './lib/three.module.js';
+import { createMap } from './map.js';
 
 // Variáveis globais básicas
 let scene, camera, renderer, clock;
@@ -41,10 +42,13 @@ function init() {
     // 5. Iluminação Básica
     setupLights();
 
-    // 6. Eventos de janela
+    // 6. Carrega o mapa
+    createMap(scene);
+
+    // 7. Eventos de janela
     window.addEventListener('resize', onWindowResize);
     
-    // 7. Configuração do Pointer Lock (travar o mouse)
+    // 8. Configuração do Pointer Lock (travar o mouse)
     setupPointerLock();
 
     // Inicia o loop
@@ -107,9 +111,6 @@ function animate() {
     // Se o jogo estiver ativo, roda a lógica de atualização
     if (isGameActive) {
         // Aqui futuramente chamaremos: player.update(delta), enemies.update(delta), etc.
-        
-        // Teste visual temporário: rotacionar levemente a câmera para provar que o loop roda
-        // camera.rotation.y += delta * 0.5; 
     }
 
     // Renderiza a cena
